@@ -33,7 +33,7 @@ public class CryInterpreter extends AudioHelper {
 
         private static final String TAG = CryInterpreter.class.getSimpleName();
         private static final String MODEL_PATH = "rfgbmmetamodel.tflite";
-        private static final float PROBABILITY_THRESHOLD = 0.24f;
+        private static final float PROBABILITY_THRESHOLD = 0.20f;
 
         private AudioClassifier classifier;
         private TensorAudio tensor;
