@@ -17,7 +17,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+
+
         }
+
     }
 
     buildTypes {
@@ -71,7 +74,9 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
     implementation("org.tensorflow:tensorflow-lite-task-audio:+")
-    implementation ("org.tensorflow:tensorflow-lite-support:+")
+    implementation("org.tensorflow:tensorflow-lite-support:+")
+    implementation("org.tensorflow:tensorflow-lite:+")
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.ui.test.junit4)
     debugImplementation(libs.ui.tooling)
