@@ -9,32 +9,26 @@
     tools:context=".helper.AudioHelper">
 
   <Button
-      android:id="@+id/buttonStopRecording"
-      android:layout_width="176dp"
-      android:layout_height="49dp"
-      android:layout_marginStart="134dp"
-      android:layout_marginTop="35dp"
-      android:layout_marginEnd="132dp"
-      android:onClick="stopRecording"
-      android:text="Stop Recording"
-      app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.548"
-      app:layout_constraintStart_toStartOf="parent"
-      app:layout_constraintTop_toBottomOf="@+id/buttonStartRecording" />
-
-  <Button
       android:id="@+id/buttonStartRecording"
-      android:layout_width="176dp"
-      android:layout_height="49dp"
-      android:layout_marginStart="132dp"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
       android:layout_marginTop="48dp"
-      android:layout_marginEnd="132dp"
       android:onClick="startRecording"
       android:text="Start Recording"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.517"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toBottomOf="@+id/barChart" />
+
+  <Button
+      android:id="@+id/buttonShowHistory"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:text="Show History"
+      android:onClick="showHistory"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@+id/buttonStartRecording" />
 
   <com.github.mikephil.charting.charts.BarChart
       android:id="@+id/barChart"
