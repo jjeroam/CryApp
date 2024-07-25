@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import com.example.babycry.R;
@@ -47,11 +48,11 @@ import java.util.List;
 public class CryInterpreter extends AudioHelper implements OnChartValueSelectedListener {
 
         private static final String TAG = CryInterpreter.class.getSimpleName();
-        private static final String MODEL_PATH = "rfgbmmetamodel.tflite";
+        private static final String CRY_CLASSIFICATION_MODEL_PATH = "rfmetamodel.tflite";
         private static final float PROBABILITY_THRESHOLD = 0.20f;
-        private static final int RECORDING_DURATION_MS = 5000; // 10 seconds
+        private static final int RECORDING_DURATION_MS = 5000; // 5 seconds
 
-        private AudioClassifier classifier;
+        private AudioClassifier cryClassificationClassifier;
         private TensorAudio tensor;
         private AudioRecord record;
         private Handler handler;
@@ -61,6 +62,7 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
         private XAxis xAxis; // Declare XAxis instance
 
         private DatabaseHelper dbHelper; // DatabaseHelper instance
+        private Button startButton; // Reference to the start recording button
 
         @Override
         public void startRecording(View view) {
@@ -68,6 +70,7 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
 
                 // Initialize BarChart
                 barChart = findViewById(R.id.barChart);
+                startButton = findViewById(R.id.buttonStartRecording); // Find the start button
 
                 if (barChart == null) {
                         Log.e(TAG, "BarChart is null. Ensure the correct view is passed.");
@@ -101,35 +104,41 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
                 Legend legend = barChart.getLegend();
                 legend.setEnabled(false);
 
-                // Load the model from the assets folder
+                // Load the cry classification model from the assets folder
                 try {
-                        classifier = AudioClassifier.createFromFile(view.getContext(), MODEL_PATH);
+                        cryClassificationClassifier = AudioClassifier.createFromFile(view.getContext(), CRY_CLASSIFICATION_MODEL_PATH);
                 } catch (IOException e) {
-                        Log.e(TAG, "Error loading model: " + e.getMessage());
+                        Log.e(TAG, "Error loading cry classification model: " + e.getMessage());
                         return;
                 }
 
                 // Create an audio recorder
-                tensor = classifier.createInputTensorAudio();
-                record = classifier.createAudioRecord();
+                tensor = cryClassificationClassifier.createInputTensorAudio();
+                record = cryClassificationClassifier.createAudioRecord();
                 record.startRecording();
 
                 handler = new Handler(Looper.getMainLooper());
-                handler.postDelayed(this::stopRecordingAndProcess, RECORDING_DURATION_MS);
+                handler.postDelayed(this::stopRecordingAndClassifyCry, RECORDING_DURATION_MS);
 
                 // Set the chart value selected listener
                 barChart.setOnChartValueSelectedListener(this);
 
                 dbHelper = new DatabaseHelper(view.getContext()); // Initialize DatabaseHelper
+
+                // Disable the start button to prevent multiple recordings at the same time
+                startButton.setEnabled(false);
         }
 
-        private void stopRecordingAndProcess() {
+        private void stopRecordingAndClassifyCry() {
                 if (record != null) {
                         record.stop();
                 }
 
-                int numberOfSamples = tensor.load(record);
-                List<Classifications> output = classifier.classify(tensor);
+                // Load audio data into tensor
+                tensor.load(record);
+
+                // Classify the audio data
+                List<Classifications> output = cryClassificationClassifier.classify(tensor);
 
                 List<Category> finalOutput = new ArrayList<>();
                 for (Classifications classifications : output) {
@@ -137,6 +146,11 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
                 }
 
                 finalOutput.sort((o1, o2) -> Float.compare(o2.getScore(), o1.getScore()));
+
+                // Debug log
+                for (Category category : finalOutput) {
+                        Log.d(TAG, "Category: " + category.getLabel() + " Score: " + category.getScore());
+                }
 
                 runOnUiThread(() -> {
                         barEntries.clear();
@@ -183,8 +197,8 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
                         Toast.makeText(this, "Result saved", Toast.LENGTH_SHORT).show();
 
                         // Re-enable the start recording button after processing
-                        View view = null;
-                        stopRecording(view);
+                        startButton.setEnabled(true);
+                        stopRecording(null);
                 });
         }
 
