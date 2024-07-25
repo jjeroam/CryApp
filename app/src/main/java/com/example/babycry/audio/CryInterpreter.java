@@ -1,6 +1,8 @@
 package com.example.babycry.audio;
 
+import android.content.ContentValues;
 import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.media.AudioRecord;
 import android.os.Handler;
@@ -16,8 +18,8 @@ import com.example.babycry.Recommendations.DiscomfortRecommendations;
 import com.example.babycry.Recommendations.HungryRecommendations;
 import com.example.babycry.Recommendations.TiredRecommendations;
 import com.example.babycry.helper.AudioHelper;
+import com.example.babycry.helper.DatabaseHelper;
 import com.example.babycry.helper.HistoryActivity;
-import com.example.babycry.helper.RecordingHistory;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
@@ -31,6 +33,7 @@ import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.github.mikephil.charting.utils.ColorTemplate;
+import com.google.gson.Gson;
 
 import org.tensorflow.lite.support.audio.TensorAudio;
 import org.tensorflow.lite.support.label.Category;
@@ -57,7 +60,7 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
         private List<String> barLabels = new ArrayList<>();
         private XAxis xAxis; // Declare XAxis instance
 
-        private List<RecordingHistory> history = new ArrayList<>();
+        private DatabaseHelper dbHelper; // DatabaseHelper instance
 
         @Override
         public void startRecording(View view) {
@@ -116,6 +119,8 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
 
                 // Set the chart value selected listener
                 barChart.setOnChartValueSelectedListener(this);
+
+                dbHelper = new DatabaseHelper(view.getContext()); // Initialize DatabaseHelper
         }
 
         private void stopRecordingAndProcess() {
@@ -147,12 +152,6 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
                                 }
                         }
 
-                        for (int i = 0; i < finalOutput.size(); i++) {
-                                Category category = finalOutput.get(i);
-                                barEntries.add(new BarEntry(i, category.getScore() * 100)); // Convert to percentage
-                                barLabels.add(category.getLabel());
-                        }
-
                         BarDataSet barDataSet = new BarDataSet(barEntries, "".toUpperCase());
                         barDataSet.setColors(ColorTemplate.COLORFUL_COLORS);
 
@@ -177,17 +176,28 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
                         barChart.setData(barData);
                         barChart.invalidate(); // Refresh the chart
 
-                        // Save history
-                        history.add(new RecordingHistory(System.currentTimeMillis(), topCategories));
+                        // Save history to database
+                        saveRecordingHistory(topCategories);
 
                         // Show history saved message
-                        Toast.makeText(this, "Recording history saved", Toast.LENGTH_SHORT).show();
-
+                        Toast.makeText(this, "Result saved", Toast.LENGTH_SHORT).show();
 
                         // Re-enable the start recording button after processing
                         View view = null;
                         stopRecording(view);
                 });
+        }
+
+        private void saveRecordingHistory(List<Category> topCategories) {
+                SQLiteDatabase db = dbHelper.getWritableDatabase();
+                Gson gson = new Gson();
+                String resultsJson = gson.toJson(topCategories);
+
+                ContentValues values = new ContentValues();
+                values.put(DatabaseHelper.COLUMN_TIMESTAMP, System.currentTimeMillis());
+                values.put(DatabaseHelper.COLUMN_RESULTS, resultsJson);
+
+                db.insert(DatabaseHelper.TABLE_HISTORY, null, values);
         }
 
         @Override

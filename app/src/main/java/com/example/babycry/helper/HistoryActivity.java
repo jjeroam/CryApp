@@ -1,6 +1,5 @@
 package com.example.babycry.helper;
 
-import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
@@ -34,9 +33,6 @@ public class HistoryActivity extends AppCompatActivity {
         historyListView = findViewById(R.id.historyListView);
         dbHelper = new DatabaseHelper(this);
 
-        // Insert example data into the database
-        insertExampleData();
-
         // Get history from the database
         List<RecordingHistory> history = getRecordingHistory();
 
@@ -46,41 +42,25 @@ public class HistoryActivity extends AppCompatActivity {
         for (RecordingHistory record : history) {
             String timestamp = sdf.format(record.getTimestamp());
             List<Category> topCategories = record.getTopCategories();
+
             StringBuilder topResults = new StringBuilder();
-            for (int i = 0; i < topCategories.size(); i++) {
-                Category category = topCategories.get(i);
+            for (Category category : topCategories) {
                 topResults.append(category.getLabel())
                         .append(" (")
                         .append(String.format("%.2f%%", category.getScore() * 100))
                         .append(")");
-                if (i < topCategories.size() - 1) {
-                    topResults.append(", ");
-                }
+                topResults.append(", ");
             }
+            // Remove the last comma and space
+            if (topResults.length() > 0) {
+                topResults.setLength(topResults.length() - 2);
+            }
+
             displayList.add(timestamp + ": " + topResults.toString());
         }
 
         historyAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, displayList);
         historyListView.setAdapter(historyAdapter);
-    }
-
-    private void insertExampleData() {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-
-        // Example categories
-        List<Category> categories = new ArrayList<>();
-        categories.add(new Category("tired", 0.234f));
-        categories.add(new Category("discomfort", 0.205f));
-
-        // Serialize categories to JSON
-        Gson gson = new Gson();
-        String resultsJson = gson.toJson(categories);
-
-        ContentValues values = new ContentValues();
-        values.put(DatabaseHelper.COLUMN_TIMESTAMP, System.currentTimeMillis() - 3600000);
-        values.put(DatabaseHelper.COLUMN_RESULTS, resultsJson);
-
-        db.insert(DatabaseHelper.TABLE_HISTORY, null, values);
     }
 
     private List<RecordingHistory> getRecordingHistory() {
@@ -90,7 +70,7 @@ public class HistoryActivity extends AppCompatActivity {
         Cursor cursor = db.query(
                 DatabaseHelper.TABLE_HISTORY,
                 new String[]{DatabaseHelper.COLUMN_TIMESTAMP, DatabaseHelper.COLUMN_RESULTS},
-                null, null, null, null, null
+                null, null, null, null, DatabaseHelper.COLUMN_TIMESTAMP + " DESC"
         );
 
         Gson gson = new Gson();
@@ -98,9 +78,6 @@ public class HistoryActivity extends AppCompatActivity {
         while (cursor.moveToNext()) {
             long timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_TIMESTAMP));
             String resultsJson = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_RESULTS));
-
-            // Log the retrieved JSON string for debugging
-            System.out.println("Retrieved JSON: " + resultsJson);
 
             // Deserialize JSON to list of categories
             List<Category> categories = gson.fromJson(resultsJson, new TypeToken<List<Category>>(){}.getType());
