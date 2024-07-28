@@ -48,8 +48,7 @@ import java.util.List;
 public class CryInterpreter extends AudioHelper implements OnChartValueSelectedListener {
 
         private static final String TAG = CryInterpreter.class.getSimpleName();
-        private static final String CRY_CLASSIFICATION_MODEL_PATH = "rfmetamodel.tflite";
-        private static final float PROBABILITY_THRESHOLD = 0.20f;
+        private static final String CRY_CLASSIFICATION_MODEL_PATH = "crymodel44.tflite";
         private static final int RECORDING_DURATION_MS = 5000; // 5 seconds
 
         private AudioClassifier cryClassificationClassifier;
@@ -145,8 +144,6 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
                         finalOutput.addAll(classifications.getCategories());
                 }
 
-                finalOutput.sort((o1, o2) -> Float.compare(o2.getScore(), o1.getScore()));
-
                 // Debug log
                 for (Category category : finalOutput) {
                         Log.d(TAG, "Category: " + category.getLabel() + " Score: " + category.getScore());
@@ -156,14 +153,10 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
                         barEntries.clear();
                         barLabels.clear();
 
-                        List<Category> topCategories = new ArrayList<>();
                         for (int i = 0; i < finalOutput.size(); i++) {
                                 Category category = finalOutput.get(i);
                                 barEntries.add(new BarEntry(i, category.getScore() * 100)); // Convert to percentage
                                 barLabels.add(category.getLabel());
-                                if (i < 2) { // Store only the top 2 categories
-                                        topCategories.add(category);
-                                }
                         }
 
                         BarDataSet barDataSet = new BarDataSet(barEntries, "".toUpperCase());
@@ -191,7 +184,7 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
                         barChart.invalidate(); // Refresh the chart
 
                         // Save history to database
-                        saveRecordingHistory(topCategories);
+                        saveRecordingHistory(finalOutput);
 
                         // Show history saved message
                         Toast.makeText(this, "Result saved", Toast.LENGTH_SHORT).show();
@@ -202,10 +195,10 @@ public class CryInterpreter extends AudioHelper implements OnChartValueSelectedL
                 });
         }
 
-        private void saveRecordingHistory(List<Category> topCategories) {
+        private void saveRecordingHistory(List<Category> categories) {
                 SQLiteDatabase db = dbHelper.getWritableDatabase();
                 Gson gson = new Gson();
-                String resultsJson = gson.toJson(topCategories);
+                String resultsJson = gson.toJson(categories);
 
                 ContentValues values = new ContentValues();
                 values.put(DatabaseHelper.COLUMN_TIMESTAMP, System.currentTimeMillis());
