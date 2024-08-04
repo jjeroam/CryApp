@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_interpreter"
+        android:icon="@android:drawable/ic_btn_speak_now"
+        android:title="Interpreter" />
+    <item
+        android:id="@+id/navigation_routines"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:title="History" />
+    <item
+        android:id="@+id/navigation_monitor"
+        android:icon="@android:drawable/ic_menu_camera"
+        android:title="Monitor" />
+</menu>

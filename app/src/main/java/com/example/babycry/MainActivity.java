@@ -1,38 +1,41 @@
 package com.example.babycry;
 
-import android.annotation.SuppressLint;
-import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
-
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
+import androidx.navigation.ui.NavigationUI;
 
-import com.example.babycry.audio.CryInterpreter;
-import com.example.babycry.helper.cam;
-
+import com.github.mikephil.charting.charts.BarChart;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
-
-    @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        BarChart barChart = findViewById(R.id.barChart);
+
+        // Set the no data text
+        barChart.setNoDataText("No cry detected");
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayShowTitleEnabled(false); // Hide default title
+
+        BottomNavigationView navView = findViewById(R.id.nav_view);
+
+        // Obtain NavHostFragment
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment_activity_main);
+        if (navHostFragment != null) {
+            // Obtain NavController from NavHostFragment
+            NavController navController = navHostFragment.getNavController();
+            NavigationUI.setupWithNavController(navView, navController);
+        } else {
+            throw new IllegalStateException("NavHostFragment not found");
+        }
     }
-
-    public void onRecord(View view){
-        Intent intent = new Intent(this, CryInterpreter.class);
-        intent.putExtra("name", "CryInterpreter");
-        startActivity(intent);
-    }
-
-    public void onMonitor(View view){
-        Intent intent = new Intent(this, cam.class);
-        intent.putExtra("name", "CryInterpreter");
-        startActivity(intent);
-    }
-
-
 }

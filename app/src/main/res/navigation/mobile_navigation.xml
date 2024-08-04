@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@id/navigation_interpreter">
+
+    <fragment
+        android:id="@+id/navigation_interpreter"
+        android:name="com.example.babycry.ui.InterpreterFragment"
+        android:label="interpreter"
+        tools:layout="@layout/fragment_interpreter" />
+
+    <fragment
+        android:id="@+id/navigation_routines"
+        android:name="com.example.babycry.ui.HistoryFragment"
+        android:label="routines"
+        tools:layout="@layout/fragment_history" />
+
+    <fragment
+        android:id="@+id/navigation_monitor"
+        android:name="com.example.babycry.ui.MonitorFragment"
+        android:label="monitor"
+        tools:layout="@layout/fragment_monitor" />
+</navigation>
