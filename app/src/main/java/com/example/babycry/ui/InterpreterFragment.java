@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.media.AudioRecord;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -65,6 +66,8 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
     private DatabaseHelper dbHelper;
     private Button startButton;
     private ImageView infoIcon;
+    private CircularCountdownView countdownView;
+    private CountDownTimer countDownTimer;
 
     @Nullable
     @Override
@@ -74,6 +77,7 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
         barChart = view.findViewById(R.id.barChart);
         startButton = view.findViewById(R.id.buttonStartRecording);
         infoIcon = view.findViewById(R.id.infoIcon);
+        countdownView = view.findViewById(R.id.circularCountdownView);
 
         // Customize the X-axis
         xAxis = barChart.getXAxis();
@@ -113,6 +117,22 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
 
     private void startRecording() {
         startButton.setEnabled(false);
+        countdownView.setVisibility(View.VISIBLE);
+        countdownView.setProgress(100); // Set initial progress to 100%
+
+        countDownTimer = new CountDownTimer(RECORDING_DURATION_MS, 100) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                int progress = (int) (millisUntilFinished / (float) RECORDING_DURATION_MS * 100);
+                countdownView.setProgress(progress);
+            }
+
+            @Override
+            public void onFinish() {
+                countdownView.setVisibility(View.GONE);
+                stopRecordingAndClassifyCry();
+            }
+        }.start();
 
         // Load the cry classification model
         try {
@@ -182,6 +202,7 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
 
             Toast.makeText(getContext(), "Result saved", Toast.LENGTH_SHORT).show();
             startButton.setEnabled(true);
+            countdownView.setVisibility(View.GONE);
         });
     }
 
@@ -225,7 +246,6 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
 
         dialog.show();
     }
-
 
     private String getRecommendationsForCategory(String category) {
         switch (category.toLowerCase().trim()) {

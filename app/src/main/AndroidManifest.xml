@@ -29,33 +29,7 @@
         android:theme="@style/Theme.BabyCry"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
-        <activity
-            android:name=".helper.HistoryActivity"
-            android:exported="false" />
-        <activity
-            android:name=".Recommendations.TiredRecommendations"
-            android:exported="false" />
-        <activity
-            android:name=".Recommendations.BellypainRecommendations"
-            android:exported="false" />
-        <activity
-            android:name=".Recommendations.BurpingRecommendations"
-            android:exported="false" />
-        <activity
-            android:name=".Recommendations.DiscomfortRecommendations"
-            android:exported="false" />
-        <activity
-            android:name=".Recommendations.HungryRecommendations"
-            android:exported="false" />
-        <activity
-            android:name=".helper.cam"
-            android:exported="false" />
-        <activity
-            android:name=".helper.AudioHelper"
-            android:exported="false"
-            android:label="@string/title_activity_rec_page"
-            android:theme="@style/Theme.BabyCry"
-            tools:ignore="DuplicateActivity" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -65,7 +39,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".audio.CryInterpreter" />
     </application>
 
 </manifest>

@@ -6,6 +6,19 @@
     android:layout_height="match_parent"
     android:padding="16dp">
 
+    <com.example.babycry.ui.CircularCountdownView
+        android:id="@+id/circularCountdownView"
+        android:layout_width="141dp"
+        android:layout_height="130dp"
+        android:layout_marginTop="26dp"
+        android:layout_marginBottom="140dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/barChart"
+        app:layout_constraintVertical_bias="0.0" />
+
     <Button
         android:id="@+id/buttonStartRecording"
         android:layout_width="100dp"

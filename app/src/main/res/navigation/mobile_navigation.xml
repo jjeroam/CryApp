@@ -8,13 +8,13 @@
     <fragment
         android:id="@+id/navigation_interpreter"
         android:name="com.example.babycry.ui.InterpreterFragment"
-        android:label="interpreter"
+        android:label="record"
         tools:layout="@layout/fragment_interpreter" />
 
     <fragment
         android:id="@+id/navigation_routines"
         android:name="com.example.babycry.ui.HistoryFragment"
-        android:label="routines"
+        android:label="history"
         tools:layout="@layout/fragment_history" />
 
     <fragment

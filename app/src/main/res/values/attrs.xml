@@ -1,0 +1,6 @@
+<resources>
+    <declare-styleable name="CircularCountdownView">
+        <attr name="countdown_color" format="color"/>
+        <attr name="stroke_width" format="dimension"/>
+    </declare-styleable>
+</resources>

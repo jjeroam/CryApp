@@ -1,10 +1,12 @@
 package com.example.babycry.ui;
 
+import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +16,7 @@ import android.widget.DatePicker;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,6 +32,7 @@ import org.tensorflow.lite.support.label.Category;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -102,6 +106,7 @@ public class HistoryFragment extends Fragment {
     private HistoryAdapter historyAdapter;
     private DatabaseHelper dbHelper;
     private Button datePickerButton;
+    private Button clearAllButton;
     private SimpleDateFormat sdfDate, sdfTime;
     private List<HistoryItem> historyItems;
 
@@ -112,8 +117,9 @@ public class HistoryFragment extends Fragment {
 
         historyListView = view.findViewById(R.id.historyListView);
         datePickerButton = view.findViewById(R.id.buttonDatePicker);
-        dbHelper = new DatabaseHelper(getContext());
+        clearAllButton = view.findViewById(R.id.buttonClearAll);
 
+        dbHelper = new DatabaseHelper(getContext());
         sdfDate = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault());
         sdfTime = new SimpleDateFormat("hh:mm a", Locale.getDefault());
 
@@ -127,12 +133,8 @@ public class HistoryFragment extends Fragment {
         historyAdapter = new HistoryAdapter(getContext(), historyItems);
         historyListView.setAdapter(historyAdapter);
 
-        datePickerButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showDatePickerDialog();
-            }
-        });
+        datePickerButton.setOnClickListener(v -> showDatePickerDialog());
+        clearAllButton.setOnClickListener(v -> showClearAllConfirmationDialog());
 
         return view;
     }
@@ -161,6 +163,26 @@ public class HistoryFragment extends Fragment {
         historyAdapter.addAll(filteredItems);
     }
 
+    private void showClearAllConfirmationDialog() {
+        new AlertDialog.Builder(getContext())
+                .setTitle("Confirm")
+                .setMessage("Are you sure you want to clear all history?")
+                .setPositiveButton(android.R.string.yes, (dialog, which) -> clearAllHistory())
+                .setNegativeButton(android.R.string.no, null)
+                .show();
+    }
+
+    private void clearAllHistory() {
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        db.delete(DatabaseHelper.TABLE_HISTORY, null, null); // Clear all rows in the table
+        db.close();
+
+        historyItems.clear(); // Clear list
+        historyAdapter.notifyDataSetChanged(); // Update the ListView
+
+        Toast.makeText(getContext(), "All history cleared", Toast.LENGTH_SHORT).show();
+    }
+
     private List<HistoryItem> getRecordingHistory() {
         List<HistoryItem> list = new ArrayList<>();
         SQLiteDatabase db = dbHelper.getReadableDatabase();
@@ -177,12 +199,20 @@ public class HistoryFragment extends Fragment {
             String resultsJson = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_RESULTS));
 
             // Deserialize JSON to list of categories
-            List<Category> categories = gson.fromJson(resultsJson, new TypeToken<List<Category>>() {
-            }.getType());
+            List<Category> categories;
+            try {
+                categories = gson.fromJson(resultsJson, new TypeToken<List<Category>>() {}.getType());
+            } catch (Exception e) {
+                Log.e("HistoryFragment", "JSON parsing error: " + e.getMessage());
+                categories = new ArrayList<>();
+            }
+
+            // Convert timestamp to Date object
+            Date dateObj = new Date(timestamp);
 
             // Format date and time
-            String date = sdfDate.format(timestamp);
-            String time = sdfTime.format(timestamp);
+            String date = sdfDate.format(dateObj);
+            String time = sdfTime.format(dateObj);
 
             // Create list of interpretations
             List<String> interpretations = new ArrayList<>();
@@ -192,9 +222,13 @@ public class HistoryFragment extends Fragment {
             }
 
             list.add(new HistoryItem(date, time, interpretations));
+
+            // Debug logging
+            Log.d("HistoryFragment", "Added HistoryItem - Date: " + date + ", Time: " + time + ", Interpretations: " + interpretations);
         }
         cursor.close();
 
         return list;
     }
+
 }
