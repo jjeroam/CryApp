@@ -4,15 +4,13 @@ import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.DatePicker;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -20,6 +18,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.example.babycry.R;
@@ -85,6 +84,11 @@ public class HistoryFragment extends Fragment {
                 dateView.setText(item.getDate());
                 timeView.setText(item.getTime());
 
+                // Use theme-based color for text
+                int textColor = ContextCompat.getColor(getContext(), R.color.colorPrimary); // Use a theme-defined color resource
+                dateView.setTextColor(textColor);
+                timeView.setTextColor(textColor);
+
                 // Clear previous views
                 interpretationsContainer.removeAllViews();
 
@@ -93,7 +97,7 @@ public class HistoryFragment extends Fragment {
                     TextView interpretationView = new TextView(getContext());
                     interpretationView.setText(interpretation);
                     interpretationView.setTextSize(14f);
-                    interpretationView.setTextColor(Color.BLACK);
+                    interpretationView.setTextColor(textColor); // Apply theme-based color
                     interpretationsContainer.addView(interpretationView);
                 }
             }
@@ -105,8 +109,8 @@ public class HistoryFragment extends Fragment {
     private ListView historyListView;
     private HistoryAdapter historyAdapter;
     private DatabaseHelper dbHelper;
-    private Button datePickerButton;
-    private Button clearAllButton;
+    private ImageButton datePickerButton;
+    private ImageButton clearAllButton;
     private SimpleDateFormat sdfDate, sdfTime;
     private List<HistoryItem> historyItems;
 
@@ -123,9 +127,11 @@ public class HistoryFragment extends Fragment {
         sdfDate = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault());
         sdfTime = new SimpleDateFormat("hh:mm a", Locale.getDefault());
 
-        // Add header view with labels
-        View headerView = inflater.inflate(R.layout.list_item_history_header, historyListView, false);
-        historyListView.addHeaderView(headerView);
+        // Add header view with labels only if it hasn't been added yet
+        if (historyListView.getHeaderViewsCount() == 0) {
+            View headerView = inflater.inflate(R.layout.list_item_history_header, historyListView, false);
+            historyListView.addHeaderView(headerView);
+        }
 
         // Get history from the database
         historyItems = getRecordingHistory();
@@ -141,13 +147,10 @@ public class HistoryFragment extends Fragment {
 
     private void showDatePickerDialog() {
         Calendar calendar = Calendar.getInstance();
-        DatePickerDialog datePickerDialog = new DatePickerDialog(getContext(), new DatePickerDialog.OnDateSetListener() {
-            @Override
-            public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
-                Calendar selectedDate = Calendar.getInstance();
-                selectedDate.set(year, month, dayOfMonth);
-                filterHistoryByDate(sdfDate.format(selectedDate.getTime()));
-            }
+        DatePickerDialog datePickerDialog = new DatePickerDialog(getContext(), (view, year, month, dayOfMonth) -> {
+            Calendar selectedDate = Calendar.getInstance();
+            selectedDate.set(year, month, dayOfMonth);
+            filterHistoryByDate(sdfDate.format(selectedDate.getTime()));
         }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
         datePickerDialog.show();
     }
@@ -221,7 +224,12 @@ public class HistoryFragment extends Fragment {
                 interpretations.add(category.getLabel() + " (" + String.format("%.2f%%", category.getScore() * 100) + ")");
             }
 
-            list.add(new HistoryItem(date, time, interpretations));
+            // Avoid adding duplicate history items
+            boolean isDuplicate = list.stream()
+                    .anyMatch(item -> item.getDate().equals(date) && item.getTime().equals(time) && item.getInterpretations().equals(interpretations));
+            if (!isDuplicate) {
+                list.add(new HistoryItem(date, time, interpretations));
+            }
 
             // Debug logging
             Log.d("HistoryFragment", "Added HistoryItem - Date: " + date + ", Time: " + time + ", Interpretations: " + interpretations);
@@ -230,5 +238,4 @@ public class HistoryFragment extends Fragment {
 
         return list;
     }
-
 }

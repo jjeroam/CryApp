@@ -6,38 +6,39 @@
     android:layout_height="match_parent"
     android:padding="16dp">
 
-    <Button
+    <ImageButton
         android:id="@+id/buttonDatePicker"
-        android:layout_width="65dp"
-        android:layout_height="65dp"
+        android:layout_width="51dp"
+        android:layout_height="48dp"
         android:background="@android:color/transparent"
-        android:text=""
-        app:icon="@drawable/calendar_search"
-        app:iconSize="40dp"
-        app:iconTint="@color/black"
+        android:scaleType="centerInside"
+        android:src="@drawable/calendar_search"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/colorPrimary" />
 
-    <Button
+    <ImageButton
         android:id="@+id/buttonClearAll"
-        android:layout_width="65dp"
-        android:layout_height="65dp"
+        android:layout_width="51dp"
+        android:layout_height="48dp"
         android:layout_marginEnd="8dp"
         android:background="@android:color/transparent"
-        android:text=""
-        app:icon="@drawable/trash_icon"
-        app:iconSize="40dp"
-        app:iconTint="@color/black"
+        android:scaleType="centerInside"
+        android:src="@drawable/trash_icon"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/colorPrimary" />
 
+    <!-- ListView for History Items -->
     <ListView
         android:id="@+id/historyListView"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/buttonDatePicker"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        app:layout_constraintVertical_bias="1.0" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

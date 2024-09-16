@@ -2,6 +2,7 @@ package com.example.babycry.ui;
 
 import android.app.AlertDialog;
 import android.content.ContentValues;
+import android.content.res.Configuration;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.media.AudioRecord;
@@ -51,7 +52,7 @@ import java.util.List;
 public class InterpreterFragment extends Fragment implements OnChartValueSelectedListener {
 
     private static final String TAG = InterpreterFragment.class.getSimpleName();
-    private static final String CRY_CLASSIFICATION_MODEL_PATH = "crymodel44.tflite";
+    private static final String CRY_CLASSIFICATION_MODEL_PATH = "rf_metamodelHI.tflite";
     private static final int RECORDING_DURATION_MS = 5000; // 5 seconds
 
     private AudioClassifier cryClassificationClassifier;
@@ -182,11 +183,18 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
             BarDataSet barDataSet = new BarDataSet(barEntries, "".toUpperCase());
             barDataSet.setColors(ColorTemplate.COLORFUL_COLORS);
             barDataSet.setValueFormatter(new PercentFormatter());
-            barDataSet.setValueTextColor(Color.BLACK);
+
+            // Determine the current theme and set text color accordingly
+            int nightModeFlags = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+            int textColor = (nightModeFlags == Configuration.UI_MODE_NIGHT_YES) ? Color.WHITE : Color.BLACK;
+
+            // Set the color of the percentage values
+            barDataSet.setValueTextColor(textColor);
             barDataSet.setValueTextSize(14f);
 
             BarData barData = new BarData(barDataSet);
 
+            // Set the X-axis label color dynamically based on the theme
             xAxis.setValueFormatter(new ValueFormatter() {
                 @Override
                 public String getFormattedValue(float value) {
@@ -194,6 +202,9 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
                     return index >= 0 && index < barLabels.size() ? barLabels.get(index) : "".toUpperCase();
                 }
             });
+
+            // Apply the same text color to the X-axis labels
+            xAxis.setTextColor(textColor);
 
             barChart.setData(barData);
             barChart.invalidate();
@@ -205,6 +216,8 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
             countdownView.setVisibility(View.GONE);
         });
     }
+
+
 
     private void saveRecordingHistory(List<Category> categories) {
         SQLiteDatabase db = dbHelper.getWritableDatabase();

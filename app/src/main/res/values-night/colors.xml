@@ -2,9 +2,9 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="toolbar_background">#2b2d42</color>
-    <color name="colorPrimary">#2b2d42</color>
+    <color name="toolbar_background">#8d99ae</color>
+    <color name="colorPrimary">#edf2f4</color>
     <color name="micColor">#edf2f4</color>
     <color name="headerColor">#edf2f4</color>
-    <color name="colorSecondary">#edf2f4</color>
+    <color name="colorSecondary">#2b2d42</color>
 </resources>

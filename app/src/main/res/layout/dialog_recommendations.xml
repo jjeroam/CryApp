@@ -9,13 +9,14 @@
         android:id="@+id/recommendationsText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@android:color/black"
+        android:textColor="@color/colorPrimary"
         android:textSize="16sp" />
 
     <Button
         android:id="@+id/closeDialogButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textColor="@color/white"
         android:text="Close" />
 
 </LinearLayout>

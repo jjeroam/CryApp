@@ -2,14 +2,14 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/navigation_interpreter"
-        android:icon="@android:drawable/ic_btn_speak_now"
+        android:icon="@drawable/mic_icon"
         android:title="Record" />
     <item
         android:id="@+id/navigation_routines"
-        android:icon="@android:drawable/ic_menu_recent_history"
+        android:icon="@drawable/history_icon"
         android:title="History" />
     <item
         android:id="@+id/navigation_monitor"
-        android:icon="@android:drawable/ic_menu_camera"
+        android:icon="@drawable/camera_svgrepo_com"
         android:title="Monitor" />
 </menu>
