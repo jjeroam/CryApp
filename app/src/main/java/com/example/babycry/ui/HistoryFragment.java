@@ -35,6 +35,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+
 public class HistoryFragment extends Fragment {
 
     public class HistoryItem {

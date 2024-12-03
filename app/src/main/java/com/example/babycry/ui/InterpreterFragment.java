@@ -45,15 +45,23 @@ import org.tensorflow.lite.support.label.Category;
 import org.tensorflow.lite.task.audio.classifier.AudioClassifier;
 import org.tensorflow.lite.task.audio.classifier.Classifications;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
 public class InterpreterFragment extends Fragment implements OnChartValueSelectedListener {
 
     private static final String TAG = InterpreterFragment.class.getSimpleName();
-    private static final String CRY_CLASSIFICATION_MODEL_PATH = "rf_metamodelHI.tflite";
+    private static final String CRY_CLASSIFICATION_MODEL_PATH = "crymodel44.tflite";
     private static final int RECORDING_DURATION_MS = 5000; // 5 seconds
+    private static final float SCORE_THRESHOLD = 0.00f;
 
     private AudioClassifier cryClassificationClassifier;
     private TensorAudio tensor;
@@ -79,6 +87,8 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
         startButton = view.findViewById(R.id.buttonStartRecording);
         infoIcon = view.findViewById(R.id.infoIcon);
         countdownView = view.findViewById(R.id.circularCountdownView);
+        Button recordWithPiButton = view.findViewById(R.id.buttonRecordWithPi);
+        recordWithPiButton.setOnClickListener(v -> recordWithRaspberryPi());
 
         // Customize the X-axis
         xAxis = barChart.getXAxis();
@@ -163,7 +173,11 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
         List<Classifications> output = cryClassificationClassifier.classify(tensor);
         List<Category> finalOutput = new ArrayList<>();
         for (Classifications classifications : output) {
-            finalOutput.addAll(classifications.getCategories());
+            for (Category category : classifications.getCategories()) {
+                if (category.getScore() >= SCORE_THRESHOLD) {
+                    finalOutput.add(category); // Only include if score exceeds threshold
+                }
+            }
         }
 
         for (Category category : finalOutput) {
@@ -184,26 +198,22 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
             barDataSet.setColors(ColorTemplate.COLORFUL_COLORS);
             barDataSet.setValueFormatter(new PercentFormatter());
 
-            // Determine the current theme and set text color accordingly
             int nightModeFlags = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
             int textColor = (nightModeFlags == Configuration.UI_MODE_NIGHT_YES) ? Color.WHITE : Color.BLACK;
 
-            // Set the color of the percentage values
             barDataSet.setValueTextColor(textColor);
             barDataSet.setValueTextSize(14f);
 
             BarData barData = new BarData(barDataSet);
 
-            // Set the X-axis label color dynamically based on the theme
             xAxis.setValueFormatter(new ValueFormatter() {
                 @Override
                 public String getFormattedValue(float value) {
                     int index = (int) value;
-                    return index >= 0 && index < barLabels.size() ? barLabels.get(index) : "".toUpperCase();
+                    return index >= 0 && index < barLabels.size() ? barLabels.get(index) : "";
                 }
             });
 
-            // Apply the same text color to the X-axis labels
             xAxis.setTextColor(textColor);
 
             barChart.setData(barData);
@@ -216,6 +226,180 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
             countdownView.setVisibility(View.GONE);
         });
     }
+
+    private void recordWithRaspberryPi() {
+        startButton.setEnabled(false);
+        countdownView.setVisibility(View.VISIBLE);
+        countdownView.setProgress(100); // Set initial progress to 100%
+
+        countDownTimer = new CountDownTimer(RECORDING_DURATION_MS, 100) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                int progress = (int) (millisUntilFinished / (float) RECORDING_DURATION_MS * 100);
+                countdownView.setProgress(progress);
+            }
+
+            @Override
+            public void onFinish() {
+                countdownView.setVisibility(View.GONE);
+                fetchRecordedAudioFromRaspberryPi();
+            }
+        }.start();
+
+        // Send POST request to Raspberry Pi to start recording
+        new Thread(() -> {
+            try {
+                // URL of Raspberry Pi server
+                String postUrl = "http://192.168.8.100:5000/record_audio"; // Replace with actual endpoint
+                HttpURLConnection postConnection = (HttpURLConnection) new URL(postUrl).openConnection();
+                postConnection.setRequestMethod("POST");
+                postConnection.setRequestProperty("Content-Type", "application/json");
+                postConnection.setDoOutput(true);
+
+                // JSON payload (matches your curl command)
+                String jsonPayload = "{\"duration\": 5, \"filename\": \"cry.wav\"}";
+
+                // Send payload
+                try (OutputStream os = postConnection.getOutputStream()) {
+                    byte[] input = jsonPayload.getBytes("utf-8");
+                    os.write(input, 0, input.length);
+                }
+
+                // Read the response
+                int responseCode = postConnection.getResponseCode();
+                Log.d(TAG, "POST Response Code: " + responseCode);
+
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    Log.d(TAG, "Recording started successfully on Raspberry Pi.");
+                } else {
+                    InputStream errorStream = postConnection.getErrorStream();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(errorStream));
+                    StringBuilder errorMessage = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        errorMessage.append(line);
+                    }
+                    Log.e(TAG, "Error starting recording: " + errorMessage);
+                }
+
+                postConnection.disconnect();
+            } catch (IOException e) {
+                Log.e(TAG, "Error in POST request to Raspberry Pi: " + e.getMessage());
+            }
+        }).start();
+    }
+
+
+    private void fetchRecordedAudioFromRaspberryPi() {
+        new Thread(() -> {
+            try {
+                // URL of Raspberry Pi server to fetch recorded audio
+                String getUrl = "http://192.168.8.100:5000/record_audio/cry.wav"; // Replace with actual IP
+                HttpURLConnection getConnection = (HttpURLConnection) new URL(getUrl).openConnection();
+                getConnection.setRequestMethod("GET");
+                getConnection.setDoInput(true);
+
+                // Connect and get the response
+                getConnection.connect();
+                InputStream inputStream = getConnection.getInputStream();
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = inputStream.read(buffer)) != -1) {
+                    byteArrayOutputStream.write(buffer, 0, length);
+                }
+
+                byte[] audioData = byteArrayOutputStream.toByteArray();
+                inputStream.close();
+                getConnection.disconnect();
+
+                // Classify the received audio data
+                classifyAudioData(audioData);
+
+            } catch (IOException e) {
+                Log.e(TAG, "Error fetching audio from Raspberry Pi: " + e.getMessage());
+                getActivity().runOnUiThread(() -> {
+                    Toast.makeText(getContext(), "Failed to retrieve audio data from Raspberry Pi", Toast.LENGTH_SHORT).show();
+                    startButton.setEnabled(true);
+                });
+            }
+        }).start();
+    }
+
+
+
+    private void classifyAudioData(byte[] audioData) {
+        // Convert byte[] to float[] (this is the format expected by the TensorFlow model)
+        float[] audioFloatData = convertByteArrayToFloatArray(audioData);
+
+        // Load the TensorAudio with the received data
+        tensor.load(audioFloatData);
+
+        // Classify the audio data
+        List<Classifications> output = cryClassificationClassifier.classify(tensor);
+        List<Category> finalOutput = new ArrayList<>();
+        for (Classifications classifications : output) {
+            finalOutput.addAll(classifications.getCategories());
+        }
+
+        // Update UI and handle classification result
+        getActivity().runOnUiThread(() -> {
+            barEntries.clear();
+            barLabels.clear();
+
+            for (int i = 0; i < finalOutput.size(); i++) {
+                Category category = finalOutput.get(i);
+                barEntries.add(new BarEntry(i, category.getScore() * 100)); // Convert to percentage
+                barLabels.add(category.getLabel());
+            }
+
+            BarDataSet barDataSet = new BarDataSet(barEntries, "".toUpperCase());
+            barDataSet.setColors(ColorTemplate.COLORFUL_COLORS);
+            barDataSet.setValueFormatter(new PercentFormatter());
+
+            int nightModeFlags = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+            int textColor = (nightModeFlags == Configuration.UI_MODE_NIGHT_YES) ? Color.WHITE : Color.BLACK;
+
+            barDataSet.setValueTextColor(textColor);
+            barDataSet.setValueTextSize(14f);
+
+            BarData barData = new BarData(barDataSet);
+            xAxis.setValueFormatter(new ValueFormatter() {
+                @Override
+                public String getFormattedValue(float value) {
+                    int index = (int) value;
+                    return index >= 0 && index < barLabels.size() ? barLabels.get(index) : "".toUpperCase();
+                }
+            });
+
+            xAxis.setTextColor(textColor);
+
+            barChart.setData(barData);
+            barChart.invalidate();
+
+            saveRecordingHistory(finalOutput);
+            Toast.makeText(getContext(), "Result saved", Toast.LENGTH_SHORT).show();
+            startButton.setEnabled(true);
+            countdownView.setVisibility(View.GONE);
+        });
+    }
+
+    private float[] convertByteArrayToFloatArray(byte[] audioData) {
+        // Convert byte[] to short[] (16-bit PCM)
+        short[] shortArray = new short[audioData.length / 2];
+        for (int i = 0; i < shortArray.length; i++) {
+            shortArray[i] = (short) ((audioData[2 * i] & 0xFF) | (audioData[2 * i + 1] << 8));
+        }
+
+        // Convert short[] to float[] (normalized)
+        float[] floatArray = new float[shortArray.length];
+        for (int i = 0; i < shortArray.length; i++) {
+            floatArray[i] = shortArray[i] / (float) Short.MAX_VALUE;
+        }
+
+        return floatArray;
+    }
+
 
 
 

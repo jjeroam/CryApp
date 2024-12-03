@@ -35,6 +35,19 @@
         app:layout_constraintTop_toBottomOf="@+id/barChart"
         android:background="@drawable/circular_button_background" />
 
+    <Button
+        android:id="@+id/buttonRecordWithPi"
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:text="Record with Pi"
+        android:textColor="@android:color/white"
+        app:layout_constraintTop_toBottomOf="@+id/buttonStartRecording"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5" />
+
     <com.github.mikephil.charting.charts.BarChart
         android:id="@+id/barChart"
         android:layout_width="match_parent"
