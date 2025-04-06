@@ -1,0 +1,5 @@
+<!-- notification_background.xml in res/drawable/ -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#FFFFFF"/> <!-- White background -->
+    <corners android:radius="10dp"/> <!-- Rounded corners -->
+</shape>

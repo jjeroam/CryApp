@@ -250,7 +250,7 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
         new Thread(() -> {
             try {
                 // URL of Raspberry Pi server
-                String postUrl = "http://192.168.8.100:5000/record_audio"; // Replace with actual endpoint
+                String postUrl = "http://192.168.254.145:5000/recorded_audio"; // Replace with actual endpoint
                 HttpURLConnection postConnection = (HttpURLConnection) new URL(postUrl).openConnection();
                 postConnection.setRequestMethod("POST");
                 postConnection.setRequestProperty("Content-Type", "application/json");
@@ -294,7 +294,7 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
         new Thread(() -> {
             try {
                 // URL of Raspberry Pi server to fetch recorded audio
-                String getUrl = "http://192.168.8.100:5000/record_audio/cry.wav"; // Replace with actual IP
+                String getUrl = "http://192.168.254.145:5000/recorded_audio/cry.wav"; // Replace with actual IP
                 HttpURLConnection getConnection = (HttpURLConnection) new URL(getUrl).openConnection();
                 getConnection.setRequestMethod("GET");
                 getConnection.setDoInput(true);
@@ -324,6 +324,21 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
                 });
             }
         }).start();
+
+        if (cryClassificationClassifier == null) {
+            try {
+                cryClassificationClassifier = AudioClassifier.createFromFile(getContext(), CRY_CLASSIFICATION_MODEL_PATH);
+                tensor = cryClassificationClassifier.createInputTensorAudio();
+            } catch (IOException e) {
+                Log.e(TAG, "Error loading cry classification model: " + e.getMessage());
+                getActivity().runOnUiThread(() -> {
+                    Toast.makeText(getContext(), "Error loading model", Toast.LENGTH_SHORT).show();
+                    startButton.setEnabled(true);
+                });
+                return;
+            }
+        }
+
     }
 
 
@@ -383,6 +398,7 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
             countdownView.setVisibility(View.GONE);
         });
     }
+
 
     private float[] convertByteArrayToFloatArray(byte[] audioData) {
         // Convert byte[] to short[] (16-bit PCM)

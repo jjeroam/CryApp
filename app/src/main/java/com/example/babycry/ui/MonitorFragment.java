@@ -1,23 +1,25 @@
 package com.example.babycry.ui;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Vibrator;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.babycry.R;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -30,27 +32,26 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
     private ImageView monitor;
     private Button connectButton;
 
-    private final int ID_CONNECT = 200;
+    private static final int ID_CONNECT = 200;
     private boolean isStreaming = false;
+
+    private View rootView; // Needed for showing Snackbar
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_monitor, container, false);
+        rootView = inflater.inflate(R.layout.fragment_monitor, container, false);
 
-        // Initialize the Connect button
-        connectButton = view.findViewById(R.id.connect);
+        connectButton = rootView.findViewById(R.id.connect);
         connectButton.setOnClickListener(this);
 
-        // Set up the monitor (ImageView) for video
-        monitor = view.findViewById(R.id.monitor);
+        monitor = rootView.findViewById(R.id.monitor);
 
-        // Set up the streaming thread
         streamThread = new HandlerThread("http-stream");
         streamThread.start();
         streamHandler = new StreamHandler(streamThread.getLooper());
 
-        return view;
+        return rootView;
     }
 
     @Override
@@ -64,16 +65,16 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
     public void onClick(View v) {
         if (v.getId() == R.id.connect) {
             if (!isStreaming) {
-                // Start streaming
                 isStreaming = true;
                 streamHandler.sendEmptyMessage(ID_CONNECT);
-                connectButton.setText("Stop Monitoring"); // Change button text
-                Toast.makeText(getContext(), "Streaming started", Toast.LENGTH_SHORT).show();
+                connectButton.setText("Stop Monitoring");
+                showOnScreenNotification("Connecting to the PI");
+                vibratePhone();
             } else {
-                // Stop streaming
                 isStreaming = false;
-                connectButton.setText("Monitor Now"); // Change button text
-                Toast.makeText(getContext(), "Streaming stopped", Toast.LENGTH_SHORT).show();
+                connectButton.setText("Monitor Now");
+                showOnScreenNotification("Monitoring Stopped: The stream has stopped.");
+                vibratePhone();
             }
         }
     }
@@ -92,7 +93,7 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
     }
 
     private void streamVideo() {
-        String streamUrl = "http://192.168.8.100:8081/";
+        String streamUrl = "http://192.168.254.145:8081/";
 
         try {
             URL url = new URL(streamUrl);
@@ -118,11 +119,24 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
                 mjpegInputStream.close();
             } else {
                 Log.e("MonitorFragment", "Stream connection failed: " + connection.getResponseCode());
-                getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Failed to connect to stream", Toast.LENGTH_SHORT).show());
+                getActivity().runOnUiThread(() -> showOnScreenNotification("Connection Failed: Unable to connect to the stream."));
             }
         } catch (Exception e) {
             e.printStackTrace();
-            getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Error connecting to stream", Toast.LENGTH_SHORT).show());
+            getActivity().runOnUiThread(() -> showOnScreenNotification("Error: Could not connect to the stream."));
+        }
+    }
+
+    private void showOnScreenNotification(String message) {
+        if (rootView != null && getActivity() != null) {
+            Snackbar.make(rootView, message, Snackbar.LENGTH_LONG).show();
+        }
+    }
+
+    private void vibratePhone() {
+        Vibrator vibrator = (Vibrator) requireContext().getSystemService(Context.VIBRATOR_SERVICE);
+        if (vibrator != null && vibrator.hasVibrator()) {
+            vibrator.vibrate(200); // Vibrate for 200ms
         }
     }
 }
