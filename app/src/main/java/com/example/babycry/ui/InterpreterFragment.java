@@ -87,8 +87,6 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
         startButton = view.findViewById(R.id.buttonStartRecording);
         infoIcon = view.findViewById(R.id.infoIcon);
         countdownView = view.findViewById(R.id.circularCountdownView);
-        Button recordWithPiButton = view.findViewById(R.id.buttonRecordWithPi);
-        recordWithPiButton.setOnClickListener(v -> recordWithRaspberryPi());
 
         // Customize the X-axis
         xAxis = barChart.getXAxis();
@@ -225,120 +223,6 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
             startButton.setEnabled(true);
             countdownView.setVisibility(View.GONE);
         });
-    }
-
-    private void recordWithRaspberryPi() {
-        startButton.setEnabled(false);
-        countdownView.setVisibility(View.VISIBLE);
-        countdownView.setProgress(100); // Set initial progress to 100%
-
-        countDownTimer = new CountDownTimer(RECORDING_DURATION_MS, 100) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                int progress = (int) (millisUntilFinished / (float) RECORDING_DURATION_MS * 100);
-                countdownView.setProgress(progress);
-            }
-
-            @Override
-            public void onFinish() {
-                countdownView.setVisibility(View.GONE);
-                fetchRecordedAudioFromRaspberryPi();
-            }
-        }.start();
-
-        // Send POST request to Raspberry Pi to start recording
-        new Thread(() -> {
-            try {
-                // URL of Raspberry Pi server
-                String postUrl = "http://192.168.254.145:5000/recorded_audio"; // Replace with actual endpoint
-                HttpURLConnection postConnection = (HttpURLConnection) new URL(postUrl).openConnection();
-                postConnection.setRequestMethod("POST");
-                postConnection.setRequestProperty("Content-Type", "application/json");
-                postConnection.setDoOutput(true);
-
-                // JSON payload (matches your curl command)
-                String jsonPayload = "{\"duration\": 5, \"filename\": \"cry.wav\"}";
-
-                // Send payload
-                try (OutputStream os = postConnection.getOutputStream()) {
-                    byte[] input = jsonPayload.getBytes("utf-8");
-                    os.write(input, 0, input.length);
-                }
-
-                // Read the response
-                int responseCode = postConnection.getResponseCode();
-                Log.d(TAG, "POST Response Code: " + responseCode);
-
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    Log.d(TAG, "Recording started successfully on Raspberry Pi.");
-                } else {
-                    InputStream errorStream = postConnection.getErrorStream();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(errorStream));
-                    StringBuilder errorMessage = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        errorMessage.append(line);
-                    }
-                    Log.e(TAG, "Error starting recording: " + errorMessage);
-                }
-
-                postConnection.disconnect();
-            } catch (IOException e) {
-                Log.e(TAG, "Error in POST request to Raspberry Pi: " + e.getMessage());
-            }
-        }).start();
-    }
-
-
-    private void fetchRecordedAudioFromRaspberryPi() {
-        new Thread(() -> {
-            try {
-                // URL of Raspberry Pi server to fetch recorded audio
-                String getUrl = "http://192.168.254.145:5000/recorded_audio/cry.wav"; // Replace with actual IP
-                HttpURLConnection getConnection = (HttpURLConnection) new URL(getUrl).openConnection();
-                getConnection.setRequestMethod("GET");
-                getConnection.setDoInput(true);
-
-                // Connect and get the response
-                getConnection.connect();
-                InputStream inputStream = getConnection.getInputStream();
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                byte[] buffer = new byte[1024];
-                int length;
-                while ((length = inputStream.read(buffer)) != -1) {
-                    byteArrayOutputStream.write(buffer, 0, length);
-                }
-
-                byte[] audioData = byteArrayOutputStream.toByteArray();
-                inputStream.close();
-                getConnection.disconnect();
-
-                // Classify the received audio data
-                classifyAudioData(audioData);
-
-            } catch (IOException e) {
-                Log.e(TAG, "Error fetching audio from Raspberry Pi: " + e.getMessage());
-                getActivity().runOnUiThread(() -> {
-                    Toast.makeText(getContext(), "Failed to retrieve audio data from Raspberry Pi", Toast.LENGTH_SHORT).show();
-                    startButton.setEnabled(true);
-                });
-            }
-        }).start();
-
-        if (cryClassificationClassifier == null) {
-            try {
-                cryClassificationClassifier = AudioClassifier.createFromFile(getContext(), CRY_CLASSIFICATION_MODEL_PATH);
-                tensor = cryClassificationClassifier.createInputTensorAudio();
-            } catch (IOException e) {
-                Log.e(TAG, "Error loading cry classification model: " + e.getMessage());
-                getActivity().runOnUiThread(() -> {
-                    Toast.makeText(getContext(), "Error loading model", Toast.LENGTH_SHORT).show();
-                    startButton.setEnabled(true);
-                });
-                return;
-            }
-        }
-
     }
 
 

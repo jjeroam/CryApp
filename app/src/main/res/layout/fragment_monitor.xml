@@ -1,26 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/monitor_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:padding="16dp">
 
     <ImageView
         android:id="@+id/monitor"
         android:layout_width="match_parent"
-        android:layout_height="400dp"
-        android:src="@drawable/ic_launcher_foreground"
-        android:layout_gravity="center_vertical|center_horizontal"
-        tools:layout_editor_absoluteX="43dp" />
+        android:layout_height="300dp"
+        android:layout_gravity="center"
+        android:scaleType="centerCrop"
+        android:contentDescription="Baby Monitor Stream" />
 
     <Button
         android:id="@+id/connect"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical|center_horizontal"
-        android:text="Monitor now" />
+        android:layout_marginTop="24dp"
+        android:text="Monitor Now" />
 
+    <Button
+        android:id="@+id/record_pi"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Record via Raspberry Pi" />
 
 </LinearLayout>

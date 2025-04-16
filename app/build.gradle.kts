@@ -123,6 +123,7 @@ android {
         // GIF Support
         implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.23")
 
+
         // Annotation
         implementation(libs.annotation)
 
