@@ -60,31 +60,19 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                     self.wfile.write(b'\r\n')
             except Exception as e:
                 logging.warning('Removed streaming client %s: %s', self.client_address, str(e))
-        elif self.path == '/recorded_audio':
-            # Serve the recorded audio file
-            self.send_response(200)
-            self.send_header('Content-Type', 'audio/wav')
-            self.end_headers()
-            with open('recorded_audio.wav', 'rb') as f:
-                self.wfile.write(f.read())
         else:
             self.send_error(404)
             self.end_headers()
 
     def do_POST(self):
         if self.path == '/start_recording':
-            # Start recording audio on receiving a POST request
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
 
-            # Parse JSON to verify the action
             try:
                 data = json.loads(post_data.decode('utf-8'))
                 if data.get('action') == 'start_recording':
-                    self.start_audio_recording()
-                    self.send_response(200)
-                    self.end_headers()
-                    self.wfile.write(b"Recording started")
+                    self.record_and_send_audio()
                     return
             except json.JSONDecodeError:
                 self.send_response(400)
@@ -94,8 +82,8 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
             self.send_error(404)
             self.end_headers()
 
-    def start_audio_recording(self):
-        # Use PyAudio to record audio
+    def record_and_send_audio(self):
+        # Start recording audio for 5 seconds
         audio = pyaudio.PyAudio()
         stream = audio.open(format=pyaudio.paInt16,
                             channels=1,
@@ -103,24 +91,33 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                             input=True,
                             frames_per_buffer=1024)
         print("Recording started...")
-        
+
         frames = []
-        for _ in range(0, int(44100 / 1024 * 5)):  # Record for 5 seconds
+        for _ in range(0, int(44100 / 1024 * 5)):
             data = stream.read(1024)
             frames.append(data)
-        
-        print("Recording finished...")
+
+        print("Recording finished.")
         stream.stop_stream()
         stream.close()
         audio.terminate()
-        
-        # Save the recorded audio to a WAV file
-        with wave.open('recorded_audio.wav', 'wb') as wf:
+
+        # Save to a buffer instead of a file
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, 'wb') as wf:
             wf.setnchannels(1)
             wf.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
             wf.setframerate(44100)
             wf.writeframes(b''.join(frames))
-        print("Audio saved as recorded_audio.wav")
+        wav_data = wav_buffer.getvalue()
+
+        # Send response with WAV data
+        self.send_response(200)
+        self.send_header('Content-Type', 'audio/wav')
+        self.send_header('Content-Length', str(len(wav_data)))
+        self.end_headers()
+        self.wfile.write(wav_data)
+        print("WAV audio sent to client.")
 
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
@@ -140,13 +137,13 @@ picam2.start()
 
 output = StreamingOutput()
 
-# Start background capture thread
+# Start camera streaming in background
 camera_thread = Thread(target=start_camera_stream, args=(picam2, output))
 camera_thread.daemon = True
 camera_thread.start()
 
 try:
-    address = ('192.168.254.151', 8081)  # Adjust if you want to bind to a specific IP
+    address = ('192.168.254.151', 8081)
     server = StreamingServer(address, StreamingHandler)
     print("Server started at http://192.168.254.151:8081")
     server.serve_forever()
