@@ -6,6 +6,9 @@ from http import server
 from picamera2 import Picamera2
 import cv2
 import pyaudio
+import json
+import time
+import wave
 
 PAGE = """
 <html>
@@ -15,7 +18,7 @@ PAGE = """
     <img src="stream.mjpg" width="640" height="480"><br>
     <h2>Audio Stream</h2>
     <audio controls autoplay>
-        <source src="/audio" type="audio/wav">
+        <source src="http://192.168.254.151:8000/mystream" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
 </center>
@@ -90,6 +93,40 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                     self.wfile.write(data)
             except Exception as e:
                 logging.warning('Audio stream client disconnected %s: %s', self.client_address, str(e))
+
+        elif self.path == '/record-audio':
+            try:
+                duration = 5  # seconds
+                filename = 'cry.wav'
+
+                logging.info("Starting 5-second recording...")
+                frames = []
+                start_time = time.time()
+
+                while time.time() - start_time < duration:
+                    data = audio_stream.read(CHUNK)
+                    frames.append(data)
+
+                with wave.open(filename, 'wb') as wf:
+                    wf.setnchannels(CHANNELS)
+                    wf.setsampwidth(p.get_sample_size(FORMAT))
+                    wf.setframerate(RATE)
+                    wf.writeframes(b''.join(frames))
+
+                with open(filename, 'rb') as f:
+                    audio_data = f.read()
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'audio/wav')
+                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.send_header('Content-Length', str(len(audio_data)))
+                self.end_headers()
+                self.wfile.write(audio_data)
+                logging.info("Audio recording sent to client.")
+
+            except Exception as e:
+                logging.error(f"Error during audio recording: {e}")
+                self.send_error(500, "Failed to record or send audio.")
         else:
             self.send_error(404)
             self.end_headers()
@@ -118,9 +155,9 @@ camera_thread.daemon = True
 camera_thread.start()
 
 try:
-    address = ('192.168.254.151', 8081)  # Bind to all interfaces
+    address = ('192.168.254.151', 8080)
     server = StreamingServer(address, StreamingHandler)
-    print("Server started at http://192.18.254.151:8081")
+    print("Server started at http://192.168.254.151:8080")
     server.serve_forever()
 finally:
     picam2.stop()
