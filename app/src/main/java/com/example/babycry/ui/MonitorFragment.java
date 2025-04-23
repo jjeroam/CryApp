@@ -1,7 +1,8 @@
 package com.example.babycry.ui;
 
 import android.app.AlertDialog;
-import android.content.Context;
+import android.content.ContentValues;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.media.MediaPlayer;
 import android.os.Bundle;
@@ -9,7 +10,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.os.Vibrator;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -23,6 +23,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.babycry.R;
+import com.example.babycry.helper.DatabaseHelper;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
@@ -30,6 +31,7 @@ import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.utils.ColorTemplate;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.gson.Gson;
 
 import org.tensorflow.lite.support.audio.TensorAudio;
 import org.tensorflow.lite.support.label.Category;
@@ -57,6 +59,7 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
     private AudioClassifier classifier;
     private TensorAudio tensor;
     private View rootView;
+    private DatabaseHelper dbHelper;
 
     @Nullable
     @Override
@@ -69,6 +72,8 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
 
         connectButton.setOnClickListener(this);
         recordPiButton.setOnClickListener(this);
+
+        dbHelper = new DatabaseHelper(getContext());
 
         streamThread = new HandlerThread("http-stream");
         streamThread.start();
@@ -177,85 +182,46 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
 
         new Thread(() -> {
             try {
-                URL url = new URL("http://192.168.254.151:8080/start_recording");
+                // Step 1: Request the Pi to record and send back .wav
+                URL url = new URL("http://192.168.254.151:8080/record-audio");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setDoOutput(true);
-                conn.getOutputStream().write("{\"filename\":\"cry.wav\"}".getBytes("utf-8"));
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(15000);
                 conn.connect();
 
                 if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                    showOnScreenNotification("Recording started.");
+                    InputStream inputStream = conn.getInputStream();
+                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                    byte[] temp = new byte[1024];
+                    int read;
+                    while ((read = inputStream.read(temp)) != -1) {
+                        buffer.write(temp, 0, read);
+                    }
+                    inputStream.close();
+
+                    byte[] audioData = buffer.toByteArray();
+                    float[] floatData = convertToFloatArray(audioData);
+                    tensor.load(floatData);
+
+                    List<Classifications> results = classifier.classify(tensor);
+                    List<Category> categories = results.get(0).getCategories();
+                    getActivity().runOnUiThread(() -> showClassificationDialog(results));
+                    saveRecordingHistory(categories);
                 } else {
-                    showOnScreenNotification("Failed to start recording.");
+                    showOnScreenNotification("Failed to get recording.");
                 }
 
                 conn.disconnect();
-
-                // Wait 5 seconds
-                Thread.sleep(5000);
-
-                stopPiRecording();
-
             } catch (Exception e) {
-                Log.e(TAG, "Start Recording Error: ", e);
-                showOnScreenNotification("Error starting recording.");
+                Log.e(TAG, "Recording Error: ", e);
+                showOnScreenNotification("Error recording from Pi.");
+            } finally {
                 resetRecordButton();
             }
         }).start();
     }
 
-    private void stopPiRecording() {
-        try {
-            URL url = new URL("http://192.168.254.151:8080/stop_recording");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setDoOutput(true);
-            conn.connect();
-
-            if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                showOnScreenNotification("Recording stopped.");
-                fetchAndClassifyAudio();
-            } else {
-                showOnScreenNotification("Failed to stop recording.");
-                resetRecordButton();
-            }
-
-            conn.disconnect();
-        } catch (Exception e) {
-            Log.e(TAG, "Stop Recording Error: ", e);
-            showOnScreenNotification("Error stopping recording.");
-            resetRecordButton();
-        }
-    }
-
-    private void fetchAndClassifyAudio() {
-        try {
-            URL url = new URL("http://192.168.254.151:8081/recorded_audio/cry.wav");
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.connect();
-
-            InputStream inputStream = connection.getInputStream();
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            byte[] temp = new byte[1024];
-            int read;
-            while ((read = inputStream.read(temp)) != -1) {
-                buffer.write(temp, 0, read);
-            }
-
-            byte[] audioData = buffer.toByteArray();
-            float[] floatData = convertToFloatArray(audioData);
-            tensor.load(floatData);
-
-            List<Classifications> results = classifier.classify(tensor);
-            showClassificationDialog(results);
-        } catch (Exception e) {
-            Log.e(TAG, "Classification Error: ", e);
-            showOnScreenNotification("Classification failed.");
-        } finally {
-            resetRecordButton();
-        }
-    }
 
     private void resetRecordButton() {
         if (getActivity() != null) {
@@ -318,6 +284,18 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
         builder.setView(dialogView)
                 .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
                 .show();
+    }
+
+    private void saveRecordingHistory(List<Category> categories) {
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        Gson gson = new Gson();
+        String resultsJson = gson.toJson(categories);
+
+        ContentValues values = new ContentValues();
+        values.put(DatabaseHelper.COLUMN_TIMESTAMP, System.currentTimeMillis());
+        values.put(DatabaseHelper.COLUMN_RESULTS, resultsJson);
+
+        db.insert(DatabaseHelper.TABLE_HISTORY, null, values);
     }
 
     private String getRecommendations(String category) {

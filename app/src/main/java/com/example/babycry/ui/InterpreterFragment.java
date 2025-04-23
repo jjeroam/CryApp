@@ -45,14 +45,7 @@ import org.tensorflow.lite.support.label.Category;
 import org.tensorflow.lite.task.audio.classifier.AudioClassifier;
 import org.tensorflow.lite.task.audio.classifier.Classifications;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -224,82 +217,6 @@ public class InterpreterFragment extends Fragment implements OnChartValueSelecte
             countdownView.setVisibility(View.GONE);
         });
     }
-
-
-
-    private void classifyAudioData(byte[] audioData) {
-        // Convert byte[] to float[] (this is the format expected by the TensorFlow model)
-        float[] audioFloatData = convertByteArrayToFloatArray(audioData);
-
-        // Load the TensorAudio with the received data
-        tensor.load(audioFloatData);
-
-        // Classify the audio data
-        List<Classifications> output = cryClassificationClassifier.classify(tensor);
-        List<Category> finalOutput = new ArrayList<>();
-        for (Classifications classifications : output) {
-            finalOutput.addAll(classifications.getCategories());
-        }
-
-        // Update UI and handle classification result
-        getActivity().runOnUiThread(() -> {
-            barEntries.clear();
-            barLabels.clear();
-
-            for (int i = 0; i < finalOutput.size(); i++) {
-                Category category = finalOutput.get(i);
-                barEntries.add(new BarEntry(i, category.getScore() * 100)); // Convert to percentage
-                barLabels.add(category.getLabel());
-            }
-
-            BarDataSet barDataSet = new BarDataSet(barEntries, "".toUpperCase());
-            barDataSet.setColors(ColorTemplate.COLORFUL_COLORS);
-            barDataSet.setValueFormatter(new PercentFormatter());
-
-            int nightModeFlags = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-            int textColor = (nightModeFlags == Configuration.UI_MODE_NIGHT_YES) ? Color.WHITE : Color.BLACK;
-
-            barDataSet.setValueTextColor(textColor);
-            barDataSet.setValueTextSize(14f);
-
-            BarData barData = new BarData(barDataSet);
-            xAxis.setValueFormatter(new ValueFormatter() {
-                @Override
-                public String getFormattedValue(float value) {
-                    int index = (int) value;
-                    return index >= 0 && index < barLabels.size() ? barLabels.get(index) : "".toUpperCase();
-                }
-            });
-
-            xAxis.setTextColor(textColor);
-
-            barChart.setData(barData);
-            barChart.invalidate();
-
-            saveRecordingHistory(finalOutput);
-            Toast.makeText(getContext(), "Result saved", Toast.LENGTH_SHORT).show();
-            startButton.setEnabled(true);
-            countdownView.setVisibility(View.GONE);
-        });
-    }
-
-
-    private float[] convertByteArrayToFloatArray(byte[] audioData) {
-        // Convert byte[] to short[] (16-bit PCM)
-        short[] shortArray = new short[audioData.length / 2];
-        for (int i = 0; i < shortArray.length; i++) {
-            shortArray[i] = (short) ((audioData[2 * i] & 0xFF) | (audioData[2 * i + 1] << 8));
-        }
-
-        // Convert short[] to float[] (normalized)
-        float[] floatArray = new float[shortArray.length];
-        for (int i = 0; i < shortArray.length; i++) {
-            floatArray[i] = shortArray[i] / (float) Short.MAX_VALUE;
-        }
-
-        return floatArray;
-    }
-
 
 
 
