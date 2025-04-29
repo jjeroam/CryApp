@@ -1,22 +1,31 @@
 package com.example.babycry.ui;
 
+import static android.content.Context.VIBRATOR_SERVICE;
+
 import android.app.AlertDialog;
 import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.media.MediaPlayer;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,22 +33,19 @@ import androidx.fragment.app.Fragment;
 
 import com.example.babycry.R;
 import com.example.babycry.helper.DatabaseHelper;
-import com.github.mikephil.charting.charts.BarChart;
-import com.github.mikephil.charting.data.BarData;
-import com.github.mikephil.charting.data.BarDataSet;
-import com.github.mikephil.charting.data.BarEntry;
-import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
-import com.github.mikephil.charting.utils.ColorTemplate;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.gson.Gson;
 
+import org.json.JSONObject;
 import org.tensorflow.lite.support.audio.TensorAudio;
 import org.tensorflow.lite.support.label.Category;
 import org.tensorflow.lite.task.audio.classifier.AudioClassifier;
 import org.tensorflow.lite.task.audio.classifier.Classifications;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -60,6 +66,7 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
     private TensorAudio tensor;
     private View rootView;
     private DatabaseHelper dbHelper;
+    private boolean soundPreviouslyDetected = false;
 
     @Nullable
     @Override
@@ -85,6 +92,8 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
         } catch (Exception e) {
             showOnScreenNotification("Error loading model: " + e.getMessage());
         }
+
+        pollSoundDetection();  // Start polling for sound detection when the fragment is created
 
         return rootView;
     }
@@ -222,7 +231,6 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
         }).start();
     }
 
-
     private void resetRecordButton() {
         if (getActivity() != null) {
             getActivity().runOnUiThread(() -> {
@@ -254,30 +262,7 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_classification_chart, null);
 
-        BarChart barChart = dialogView.findViewById(R.id.chartResult);
         TextView recommendationText = dialogView.findViewById(R.id.recommendationText);
-
-        List<BarEntry> entries = new ArrayList<>();
-        List<String> labels = new ArrayList<>();
-
-        for (int i = 0; i < categories.size(); i++) {
-            entries.add(new BarEntry(i, categories.get(i).getScore() * 100));
-            labels.add(categories.get(i).getLabel());
-        }
-
-        BarDataSet dataSet = new BarDataSet(entries, "Cry Types");
-        dataSet.setColors(ColorTemplate.MATERIAL_COLORS);
-        dataSet.setValueTextSize(12f);
-
-        barChart.setData(new BarData(dataSet));
-        barChart.getDescription().setEnabled(false);
-        barChart.getXAxis().setGranularity(1f);
-        barChart.getXAxis().setDrawGridLines(false);
-        barChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(labels));
-        barChart.getAxisLeft().setDrawGridLines(false);
-        barChart.getAxisRight().setEnabled(false);
-        barChart.getLegend().setEnabled(false);
-        barChart.invalidate();
 
         recommendationText.setText(getRecommendations(categories.get(0).getLabel()));
 
@@ -303,22 +288,87 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
             case "tired":
                 return "Try swaddling, rocking gently, using a pacifier, or playing soft sounds.";
             case "hungry":
-                return "Offer a feeding and ensure they're eating enough without distractions.";
-            case "belly_pain":
-                return "Try burping, bicycle legs, or feeding smaller amounts more frequently.";
-            case "burping":
-                return "Hold upright and gently pat their back to help release gas.";
-            case "discomfort":
-                return "Check clothing, temperature, or diaper status.";
+                return "Check for feeding, offer milk or formula.";
             default:
-                return "No specific recommendation available.";
+                return "Check baby's comfort, try soothing techniques.";
         }
     }
 
+    private void pollSoundDetection() {
+        Handler handler = new Handler();
+        Runnable pollRunnable = new Runnable() {
+            @Override
+            public void run() {
+                new Thread(() -> {
+                    try {
+                        URL url = new URL("http://192.168.254.151:8080/poll-sound");
+                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("GET");
+
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        String response = reader.readLine();
+                        JSONObject json = new JSONObject(response);
+
+                        boolean detected = json.getBoolean("sound_detected");
+
+                        if (detected && !soundPreviouslyDetected) {
+                            soundPreviouslyDetected = true;
+                            getActivity().runOnUiThread(() -> {
+                                triggerVibration();
+                                playNotificationSound();
+                                showPersistentNotification();
+                            });
+                        } else if (!detected) {
+                            soundPreviouslyDetected = false;
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+                handler.postDelayed(this, 1000);
+            }
+        };
+        handler.post(pollRunnable);
+    }
+
+    private void triggerVibration() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Vibrator vibrator = (Vibrator) getActivity().getSystemService(VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(VibrationEffect.createOneShot(3000, VibrationEffect.DEFAULT_AMPLITUDE));
+            }
+        } else {
+            Vibrator vibrator = (Vibrator) getActivity().getSystemService(VIBRATOR_SERVICE);
+            if (vibrator != null) {
+                vibrator.vibrate(3000); // Legacy support for older versions
+            }
+        }
+    }
+
+    private void playNotificationSound() {
+        Ringtone ringtone = RingtoneManager.getRingtone(getContext(), RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
+        ringtone.play();
+    }
+
+    private void showPersistentNotification() {
+        // Create a custom Toast
+        Toast toast = Toast.makeText(getContext(), "Check out your baby, he/she might need your help", Toast.LENGTH_LONG);
+
+        // Set custom view for the Toast (center and larger text)
+        View customView = getLayoutInflater().inflate(R.layout.custom_toast_layout, null);
+        TextView textView = customView.findViewById(R.id.toast_text);
+        textView.setText("Check out your baby, he/she might need your help");
+
+        toast.setView(customView);
+        toast.setGravity(Gravity.CENTER, 0, 0); // Position in the center of the screen
+        toast.show();
+    }
+
+
     private void showOnScreenNotification(String message) {
-        if (rootView != null && getActivity() != null) {
-            getActivity().runOnUiThread(() ->
-                    Snackbar.make(rootView, message, Snackbar.LENGTH_LONG).show());
+        if (getActivity() != null) {
+            Snackbar.make(rootView, message, Snackbar.LENGTH_LONG).show();
         }
     }
 }
