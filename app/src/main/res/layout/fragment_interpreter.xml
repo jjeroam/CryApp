@@ -6,56 +6,33 @@
     android:layout_height="match_parent"
     android:padding="16dp">
 
+    <!-- Circular Countdown View -->
     <com.example.babycry.ui.CircularCountdownView
         android:id="@+id/circularCountdownView"
-        android:layout_width="141dp"
-        android:layout_height="130dp"
-        android:layout_marginTop="26dp"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
         android:layout_marginBottom="140dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/barChart"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Start Recording Button -->
     <Button
         android:id="@+id/buttonStartRecording"
         android:layout_width="100dp"
         android:layout_height="100dp"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="308dp"
+        android:background="@drawable/circular_button_background"
         android:onClick="startRecording"
         app:icon="@drawable/microphone_svgrepo_com"
-        app:iconSize="40dp"
-        app:iconPadding="0dp"
         app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:iconSize="40dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/barChart"
-        android:background="@drawable/circular_button_background" />
-
-
-    <com.github.mikephil.charting.charts.BarChart
-        android:id="@+id/barChart"
-        android:layout_width="match_parent"
-        android:layout_height="392dp"
-        android:layout_marginStart="22dp"
-        android:layout_marginTop="27dp"
-        android:layout_marginEnd="23dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <ImageView
-        android:id="@+id/infoIcon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        android:src="@drawable/info_circle"
-        android:layout_marginStart="16dp"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

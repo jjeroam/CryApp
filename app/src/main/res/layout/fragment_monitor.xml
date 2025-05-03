@@ -29,4 +29,16 @@
         android:layout_marginTop="16dp"
         android:text="Record via Raspberry Pi" />
 
+    <ImageButton
+        android:id="@+id/ip_settings_button"
+        android:layout_width="51dp"
+        android:layout_height="48dp"
+        android:layout_margin="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Set IP Address"
+        android:importantForAccessibility="no"
+        android:scaleType="centerInside"
+        android:src="@drawable/raspberry_pi_svgrepo_com" />
+
+
 </LinearLayout>

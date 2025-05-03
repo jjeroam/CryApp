@@ -1,0 +1,122 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:minWidth="300dp"
+    android:minHeight="400dp"
+    android:weightSum="1">
+
+    <TextView
+        android:id="@+id/category_1_label"
+        android:text="Category 1"
+        android:textSize="18sp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"/>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <ProgressBar
+            android:id="@+id/progress_bar_1"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="20dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progressDrawable="@drawable/rounded_progress_bar"
+            android:indeterminate="false"
+            android:progress="0" />
+        <TextView
+            android:id="@+id/percentage_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="8dp"
+            android:text="0%"
+            android:textSize="14sp"
+            android:gravity="end"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/category_2_label"
+        android:text="Category 2"
+        android:textSize="18sp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"/>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <ProgressBar
+            android:id="@+id/progress_bar_2"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="20dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progressDrawable="@drawable/rounded_progress_bar"
+            android:indeterminate="false"
+            android:progress="0" />
+        <TextView
+            android:id="@+id/percentage_2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="8dp"
+            android:text="0%"
+            android:textSize="14sp"
+            android:gravity="end"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/category_3_label"
+        android:text="Category 3"
+        android:textSize="18sp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"/>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <ProgressBar
+            android:id="@+id/progress_bar_3"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="20dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progressDrawable="@drawable/rounded_progress_bar"
+            android:indeterminate="false"
+            android:progress="0" />
+        <TextView
+            android:id="@+id/percentage_3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="8dp"
+            android:text="0%"
+            android:textSize="14sp"
+            android:gravity="end"/>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="RECOMMENDATIONS:"
+        android:paddingTop="20dp"
+        android:textSize="16sp"/>
+    <TextView
+        android:id="@+id/recommendations_text"
+        android:text="Recommendations"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textSize="16sp"/>
+</LinearLayout>

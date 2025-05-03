@@ -1,6 +1,7 @@
 package com.example.babycry;
 
 import android.os.Bundle;
+import android.widget.ProgressBar;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -17,10 +18,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        BarChart barChart = findViewById(R.id.barChart);
-
-        // Set the no data text
-        barChart.setNoDataText("No cry detected");
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);

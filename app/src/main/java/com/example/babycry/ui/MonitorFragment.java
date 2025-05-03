@@ -23,7 +23,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -67,6 +69,8 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
     private View rootView;
     private DatabaseHelper dbHelper;
     private boolean soundPreviouslyDetected = false;
+    private String raspberryPiIp = "192.168.254.151";
+
 
     @Nullable
     @Override
@@ -79,6 +83,10 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
 
         connectButton.setOnClickListener(this);
         recordPiButton.setOnClickListener(this);
+
+        ImageButton ipSettingsButton = rootView.findViewById(R.id.ip_settings_button);
+        ipSettingsButton.setOnClickListener(v -> showIpInputDialog());
+
 
         dbHelper = new DatabaseHelper(getContext());
 
@@ -135,6 +143,25 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
             streamVideo();
         }
     }
+
+    private void showIpInputDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle("Set Raspberry Pi IP Address");
+
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_ip_input, null);
+        TextView ipInput = dialogView.findViewById(R.id.ip_edit_text);
+        ipInput.setText(raspberryPiIp); // prefill current IP
+
+        builder.setView(dialogView);
+        builder.setPositiveButton("Save", (dialog, which) -> {
+            raspberryPiIp = ipInput.getText().toString().trim();
+            showOnScreenNotification("IP updated: " + raspberryPiIp);
+        });
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        builder.create().show();
+    }
+
 
     private void streamVideo() {
         try {
@@ -215,7 +242,7 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
 
                     List<Classifications> results = classifier.classify(tensor);
                     List<Category> categories = results.get(0).getCategories();
-                    getActivity().runOnUiThread(() -> showClassificationDialog(results));
+                    getActivity().runOnUiThread(() -> showClassificationResults(categories));
                     saveRecordingHistory(categories);
                 } else {
                     showOnScreenNotification("Failed to get recording.");
@@ -254,21 +281,60 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
         return floatArray;
     }
 
-    private void showClassificationDialog(List<Classifications> results) {
-        if (getActivity() == null) return;
-
-        List<Category> categories = results.get(0).getCategories();
-
+    private void showClassificationResults(List<Category> topCategories) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_classification_chart, null);
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_classification_results, null);
 
-        TextView recommendationText = dialogView.findViewById(R.id.recommendationText);
+        // Set up progress bars and percentage text views for top 3 categories
+        ProgressBar progressBar1 = dialogView.findViewById(R.id.progress_bar_1);
+        ProgressBar progressBar2 = dialogView.findViewById(R.id.progress_bar_2);
+        ProgressBar progressBar3 = dialogView.findViewById(R.id.progress_bar_3);
 
-        recommendationText.setText(getRecommendations(categories.get(0).getLabel()));
+        TextView category1Label = dialogView.findViewById(R.id.category_1_label);
+        TextView category2Label = dialogView.findViewById(R.id.category_2_label);
+        TextView category3Label = dialogView.findViewById(R.id.category_3_label);
+
+        TextView percentage1 = dialogView.findViewById(R.id.percentage_1);
+        TextView percentage2 = dialogView.findViewById(R.id.percentage_2);
+        TextView percentage3 = dialogView.findViewById(R.id.percentage_3);
+
+        TextView recommendationsText = dialogView.findViewById(R.id.recommendations_text);
+
+        // Set the top 3 categories and progress bar values
+        if (topCategories.size() > 0) {
+            Category category1 = topCategories.get(0);
+            category1Label.setText(category1.getLabel());
+            int progress1 = (int) (category1.getScore() * 100);
+            progressBar1.setProgress(progress1); // Set percentage
+            percentage1.setText(progress1 + "%");
+
+            // Display recommendations for category 1
+            recommendationsText.setText(getRecommendationsForCategory(category1.getLabel()));
+        }
+
+        if (topCategories.size() > 1) {
+            Category category2 = topCategories.get(1);
+            category2Label.setText(category2.getLabel());
+            int progress2 = (int) (category2.getScore() * 100);
+            progressBar2.setProgress(progress2); // Set percentage
+            percentage2.setText(progress2 + "%");
+        }
+
+        if (topCategories.size() > 2) {
+            Category category3 = topCategories.get(2);
+            category3Label.setText(category3.getLabel());
+            int progress3 = (int) (category3.getScore() * 100);
+            progressBar3.setProgress(progress3); // Set percentage
+            percentage3.setText(progress3 + "%");
+        }
 
         builder.setView(dialogView)
-                .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
-                .show();
+                .setCancelable(true)
+                .setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
     }
 
     private void saveRecordingHistory(List<Category> categories) {
@@ -283,14 +349,20 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
         db.insert(DatabaseHelper.TABLE_HISTORY, null, values);
     }
 
-    private String getRecommendations(String category) {
-        switch (category.toLowerCase()) {
+    private String getRecommendationsForCategory(String category) {
+        switch (category.toLowerCase().trim()) {
             case "tired":
-                return "Try swaddling, rocking gently, using a pacifier, or playing soft sounds.";
+                return "1. Swaddle your baby to help them sleep...";
             case "hungry":
-                return "Check for feeding, offer milk or formula.";
+                return "1. Feed your baby immediately when you notice signs of hunger...";
+            case "belly_pain":
+                return "1. Bicycle the baby’s legs to relieve gas...";
+            case "burping":
+                return "1. Hold them upright to make your baby burp...";
+            case "discomfort":
+                return "1. Make sure your baby is comfortable...";
             default:
-                return "Check baby's comfort, try soothing techniques.";
+                return "No recommendations available.";
         }
     }
 
