@@ -19,6 +19,7 @@ lifecycleLivedataKtx = "2.7.0"
 lifecycleViewmodelKtx = "2.7.0"
 navigationFragment = "2.7.7"
 navigationUi = "2.7.7"
+navigationUiVersion = "2.6.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -45,7 +46,8 @@ annotation = { group = "androidx.annotation", name = "annotation", version.ref =
 lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycleLivedataKtx" }
 lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
-navigation-ui = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigationUi" }  # Add this line for navigation-ui
+navigation-ui = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigationUi" }
+androidx-navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigationUiVersion" }  # Add this line for navigation-ui
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

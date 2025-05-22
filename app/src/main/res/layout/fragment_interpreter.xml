@@ -6,23 +6,11 @@
     android:layout_height="match_parent"
     android:padding="16dp">
 
-    <!-- Circular Countdown View -->
-    <com.example.babycry.ui.CircularCountdownView
-        android:id="@+id/circularCountdownView"
-        android:layout_width="160dp"
-        android:layout_height="160dp"
-        android:layout_marginBottom="140dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Start Recording Button -->
     <Button
         android:id="@+id/buttonStartRecording"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
         android:layout_marginTop="308dp"
         android:background="@drawable/circular_button_background"
         android:onClick="startRecording"
@@ -30,6 +18,17 @@
         app:iconGravity="textStart"
         app:iconPadding="0dp"
         app:iconSize="40dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <com.example.babycry.ui.CircularCountdownView
+        android:id="@+id/circularCountdownView"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginTop="308dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"

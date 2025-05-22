@@ -29,7 +29,11 @@
         android:theme="@style/Theme.BabyCry"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
-
+        <activity
+            android:name=".ui.LandingActivity"
+            android:exported="false"
+            android:label="@string/title_activity_landing"
+            android:theme="@style/Theme.BabyCry" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

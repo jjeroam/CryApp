@@ -54,6 +54,7 @@ public class InterpreterFragment extends Fragment {
     private Button startButton;
     private CircularCountdownView countdownView;
     private CountDownTimer countDownTimer;
+    private AlertDialog processingDialog;
 
     @Nullable
     @Override
@@ -99,21 +100,16 @@ public class InterpreterFragment extends Fragment {
         tensor = cryClassificationClassifier.createInputTensorAudio();
         record = cryClassificationClassifier.createAudioRecord();
         record.startRecording();
-
-        handler = new Handler(Looper.getMainLooper());
-        handler.postDelayed(this::stopRecordingAndClassifyCry, RECORDING_DURATION_MS);
     }
 
-    private AlertDialog processingDialog;
-
     private void stopRecordingAndClassifyCry() {
-        // Show "Processing..." dialog on UI thread
         getActivity().runOnUiThread(() -> {
             processingDialog = new AlertDialog.Builder(getContext())
                     .setTitle("Processing...")
                     .setMessage("Classifying the cry, please wait.")
                     .setCancelable(false)
                     .show();
+
         });
 
         ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -133,8 +129,8 @@ public class InterpreterFragment extends Fragment {
                 List<Classifications> yamnetResults = yamnet.classify(yamnetTensor);
                 for (Classifications classifications : yamnetResults) {
                     for (Category category : classifications.getCategories()) {
-                        if (category.getLabel().toLowerCase().contains("baby cry") || category.getLabel().toLowerCase().contains("crying")
-                                || category.getLabel().toLowerCase().contains("infant crying") && category.getScore() >= 0.1f) {
+                        if ((category.getLabel().toLowerCase().contains("baby cry") || category.getLabel().toLowerCase().contains("crying")
+                                || category.getLabel().toLowerCase().contains("infant cry")) && category.getScore() >= 0.01f) {
                             containsCry = true;
                             break;
                         }
@@ -148,23 +144,23 @@ public class InterpreterFragment extends Fragment {
 
             if (!containsCry) {
                 getActivity().runOnUiThread(() -> {
+                    // Dismiss the processing dialog first
                     if (processingDialog != null && processingDialog.isShowing()) {
                         processingDialog.dismiss();
                     }
 
+                    // Then show the alert
                     new AlertDialog.Builder(getContext())
                             .setTitle("No Cry Detected")
                             .setMessage("No cry detected. Try recording again.")
+                            .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
                             .setCancelable(false)
-                            .setPositiveButton("OK", (dialog, which) -> {
-                                dialog.dismiss();
-                            })
                             .show();
 
+                    // Re-enable the button and hide countdown
                     startButton.setEnabled(true);
                     countdownView.setVisibility(View.GONE);
                 });
-                executor.shutdown();
                 return;
             }
 

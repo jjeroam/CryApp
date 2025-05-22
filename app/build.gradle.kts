@@ -102,9 +102,9 @@ android {
 
         // TensorFlow Lite (Pinned Versions)
         implementation("org.tensorflow:tensorflow-lite:2.13.0")
-        implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
-        implementation("org.tensorflow:tensorflow-lite-task-audio:0.4.3")
-        implementation("org.tensorflow:tensorflow-lite-metadata:0.4.3")
+        implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+        implementation("org.tensorflow:tensorflow-lite-task-audio:0.4.4")
+        implementation("org.tensorflow:tensorflow-lite-metadata:0.4.4")
 
 
         // Charting
@@ -136,4 +136,22 @@ android {
         debugImplementation(libs.ui.tooling)
         debugImplementation(libs.ui.test.manifest)
     }
+}
+dependencies {
+    implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.activity.compose)
+    implementation(platform(libs.compose.bom))
+    implementation(libs.ui)
+    implementation(libs.ui.graphics)
+    implementation(libs.ui.tooling.preview)
+    implementation(libs.material3)
+    implementation(libs.material)
+    implementation(libs.appcompat)
+    implementation(libs.constraintlayout)
+    implementation(libs.navigation.fragment)
+    implementation(libs.androidx.navigation.ui)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.ui.test.junit4)
+    debugImplementation(libs.ui.tooling)
+    debugImplementation(libs.ui.test.manifest)
 }
