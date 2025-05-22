@@ -2,19 +2,28 @@ import io
 import logging
 import socketserver
 import subprocess
-from threading import Condition, Thread, Lock
+import threading
+import time
+import json
+import os
+import wave
 from http import server
 from picamera2 import Picamera2
 import cv2
 import pyaudio
-import json
-import time
-import wave
-import os
 import tkinter as tk
 from tkinter import scrolledtext
+from datetime import datetime
+import netifaces
 
-# HTML page
+# Constants
+CHUNK = 1024
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 44100
+RECORD_SECONDS = 5
+OUTPUT_FILENAME = "cry.wav"
+THRESHOLD = 500
 PAGE = """
 <html>
 <body>
@@ -31,21 +40,16 @@ PAGE = """
 </html>
 """
 
-# Audio settings
-CHUNK = 1024
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 44100
-RECORD_SECONDS = 5
-OUTPUT_FILENAME = "cry.wav"
-THRESHOLD = 500
-
+# Audio setup
 p = pyaudio.PyAudio()
+sound_detected_flag = False
+sound_rms_level = 0
+sound_lock = threading.Lock()
 
 class StreamingOutput:
     def __init__(self):
         self.frame = None
-        self.condition = Condition()
+        self.condition = threading.Condition()
 
     def set_frame(self, frame):
         with self.condition:
@@ -53,9 +57,6 @@ class StreamingOutput:
             self.condition.notify_all()
 
 output = StreamingOutput()
-sound_detected_flag = False
-sound_rms_level = 0
-sound_lock = Lock()
 
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -106,6 +107,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
+            self.server.app.log_message("Android app requested to record audio using Raspberry Pi.")
             self.wfile.write(json.dumps({"status": "recorded"}).encode())
 
         elif self.path == '/cry.wav':
@@ -125,11 +127,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 
     def record_audio(self):
         frames = []
-        stream = p.open(format=FORMAT,
-                        channels=CHANNELS,
-                        rate=RATE,
-                        input=True,
-                        frames_per_buffer=CHUNK)
+        stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
         for _ in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
             data = stream.read(CHUNK)
             frames.append(data)
@@ -147,48 +145,47 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
-def start_camera_stream(picam2, output):
-    while True:
-        frame = picam2.capture_array()
-        ret, jpeg = cv2.imencode('.jpg', frame)
-        if ret:
-            output.set_frame(jpeg.tobytes())
-
-def sound_detection_loop(update_gui_callback):
-    global sound_detected_flag, sound_rms_level
-    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
-    while True:
-        data = stream.read(CHUNK, exception_on_overflow=False)
-        audio_data = memoryview(data).cast('h')
-        rms = (sum(sample * sample for sample in audio_data) / len(audio_data)) ** 0.5
-        with sound_lock:
-            sound_detected_flag = rms > THRESHOLD
-            sound_rms_level = int(rms)
-        update_gui_callback(sound_detected_flag, sound_rms_level)
-        time.sleep(0.5)
+    def __init__(self, server_address, RequestHandlerClass, app):
+        super().__init__(server_address, RequestHandlerClass)
+        self.app = app
 
 class App:
     def __init__(self, master):
         self.master = master
         master.title("Raspberry Pi Stream Server")
-        master.geometry("600x350")
+        master.geometry("400x640")
+
+        self.rms_label = tk.Label(master, text="RMS: 0", font=("Arial", 10))
+        self.rms_label.place(x=10, y=10)
 
         self.start_button = tk.Button(master, text="Start Server", command=self.toggle_server, bg="green", fg="white", height=2, width=20)
-        self.start_button.pack(pady=10)
+        self.start_button.pack(pady=20)
 
-        self.status_label = tk.Label(master, text="Sound Detection: Waiting...", font=("Arial", 14))
-        self.status_label.pack(pady=5)
+        self.ip_button = tk.Button(master, text="Show IP Address", command=self.show_ip, width=20)
+        self.ip_button.pack()
 
-        self.rms_label = tk.Label(master, text="RMS Level: 0", font=("Arial", 12))
-        self.rms_label.pack(pady=5)
-
-        self.log = scrolledtext.ScrolledText(master, width=70, height=10, state='disabled')
-        self.log.pack()
+        self.debug_text = scrolledtext.ScrolledText(master, width=75, height=12, state='disabled')
+        self.debug_text.pack(pady=10)
 
         self.is_running = False
         self.picam2 = None
         self.server = None
         self.darkice_process = None
+
+    def log_message(self, message):
+        timestamp = datetime.now().strftime("[%m-%d %I:%M:%S %p]")
+        self.debug_text.config(state=tk.NORMAL)
+        self.debug_text.insert(tk.END, f"{timestamp} {message}\n")
+        self.debug_text.config(state=tk.DISABLED)
+        self.debug_text.see(tk.END)
+
+    def show_ip(self):
+        try:
+            iface = netifaces.gateways()['default'][netifaces.AF_INET][1]
+            ip = netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr']
+            self.log_message(f"IP Address: {ip}")
+        except Exception:
+            self.log_message("Unable to get IP address.")
 
     def toggle_server(self):
         if self.is_running:
@@ -196,57 +193,37 @@ class App:
         else:
             self.start_server()
 
-    def log_message(self, message):
-        self.log.configure(state='normal')
-        self.log.insert(tk.END, message + '\n')
-        self.log.configure(state='disabled')
-        self.log.see(tk.END)
-
-    def update_gui_status(self, detected, rms):
-        self.status_label.config(text=f"Sound Detection: {'Detected' if detected else 'No Sound'}", fg="green" if detected else "red")
-        self.rms_label.config(text=f"RMS Level: {rms}")
-
     def start_server(self):
-        self.log_message("Starting camera...")
         self.picam2 = Picamera2()
         self.picam2.configure(self.picam2.create_video_configuration(main={"size": (640, 480)}))
         self.picam2.start()
 
-        self.log_message("Starting camera thread...")
-        self.camera_thread = Thread(target=start_camera_stream, args=(self.picam2, output))
+        self.camera_thread = threading.Thread(target=self.camera_loop)
         self.camera_thread.daemon = True
         self.camera_thread.start()
 
-        self.log_message("Launching HTTP server...")
-        address = ('', 8080)
-        self.server = StreamingServer(address, StreamingHandler)
-        self.server_thread = Thread(target=self.server.serve_forever)
+        self.server = StreamingServer(("", 8080), StreamingHandler, self)
+        self.server_thread = threading.Thread(target=self.server.serve_forever)
         self.server_thread.daemon = True
         self.server_thread.start()
+        self.log_message("HTTP server started at http://0.0.0.0:8080")
 
-        self.log_message("Starting DarkIce...")
         try:
-            self.darkice_process = subprocess.Popen(
-                ['darkice'],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            Thread(target=self.log_darkice_output, daemon=True).start()
+            self.darkice_process = subprocess.Popen(['darkice', '-c', '/etc/darkice.cfg'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            threading.Thread(target=self.log_darkice_output, daemon=True).start()
+            self.log_message("DarkIce started.")
+            self.log_message("DarkIce is active. Raspberry Pi is now listening for audio...")
         except Exception as e:
             self.log_message(f"Failed to start DarkIce: {e}")
 
-        self.log_message("Starting sound detection...")
-        self.sound_thread = Thread(target=sound_detection_loop, args=(self.update_gui_status,))
+        self.sound_thread = threading.Thread(target=self.sound_loop)
         self.sound_thread.daemon = True
         self.sound_thread.start()
 
         self.start_button.config(text="Stop Server", bg="red")
         self.is_running = True
-        self.log_message("Server, DarkIce, and sound detection started.")
 
     def stop_server(self):
-        self.log_message("Stopping server...")
-
         if self.server:
             self.server.shutdown()
             self.server.server_close()
@@ -256,12 +233,35 @@ class App:
             self.picam2.stop()
 
         if self.darkice_process:
-            self.darkice_process.terminate()
-            self.darkice_process.wait()
+            subprocess.call(['sudo', 'pkill', '-f', 'darkice'])
+            self.darkice_process = None
 
         self.start_button.config(text="Start Server", bg="green")
         self.is_running = False
         self.log_message("Server and DarkIce stopped.")
+
+    def camera_loop(self):
+        while True:
+            frame = self.picam2.capture_array()
+            ret, jpeg = cv2.imencode('.jpg', frame)
+            if ret:
+                output.set_frame(jpeg.tobytes())
+
+    def sound_loop(self):
+        global sound_detected_flag, sound_rms_level
+        stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+        while True:
+            data = stream.read(CHUNK, exception_on_overflow=False)
+            audio_data = memoryview(data).cast('h')
+            rms = (sum(sample * sample for sample in audio_data) / len(audio_data)) ** 0.5
+            with sound_lock:
+                detected = rms > THRESHOLD
+                if detected and not sound_detected_flag:
+                    self.log_message("Sound detected by Raspberry Pi microphone.")
+                sound_detected_flag = detected
+                sound_rms_level = int(rms)
+            self.rms_label.config(text=f"RMS: {sound_rms_level}")
+            time.sleep(0.5)
 
     def log_darkice_output(self):
         if self.darkice_process:
@@ -272,7 +272,6 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = App(root)
     root.mainloop()
-
     p.terminate()
 
 
