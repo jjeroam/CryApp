@@ -202,45 +202,67 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
 
         new Thread(() -> {
             try {
-                URL url = new URL("http://" + raspberryPiIp + ":8080/record-audio");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(15000);
-                conn.connect();
+                // Step 1: Trigger recording on Raspberry Pi
+                URL recordUrl = new URL("http://" + raspberryPiIp + ":8080/record-audio");
+                HttpURLConnection recordConn = (HttpURLConnection) recordUrl.openConnection();
+                recordConn.setRequestMethod("GET");
+                recordConn.setConnectTimeout(10000);
+                recordConn.setReadTimeout(15000);
+                recordConn.connect();
 
-                if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                    InputStream inputStream = conn.getInputStream();
-                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                    byte[] temp = new byte[1024];
-                    int read;
-                    while ((read = inputStream.read(temp)) != -1) {
-                        buffer.write(temp, 0, read);
-                    }
-                    inputStream.close();
+                if (recordConn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                    // Wait for the Raspberry Pi to finish recording
+                    Thread.sleep(2000); // Optional: tune this if needed
+                    recordConn.disconnect();
 
-                    byte[] audioData = buffer.toByteArray();
+                    // Step 2: Download cry.wav
+                    URL audioUrl = new URL("http://" + raspberryPiIp + ":8080/cry.wav");
+                    HttpURLConnection audioConn = (HttpURLConnection) audioUrl.openConnection();
+                    audioConn.setRequestMethod("GET");
+                    audioConn.setConnectTimeout(10000);
+                    audioConn.setReadTimeout(15000);
+                    audioConn.connect();
 
-                    // First classify if it's a cry or not using YAMNet
-                    boolean isCry = classifyWithYamnet(audioData);
-                    if (isCry) {
-                        float[] floatData = convertToFloatArray(audioData);
-                        tensor.load(floatData);
-                        List<Classifications> results = cryClassifier.classify(tensor);
-                        List<Category> categories = results.get(0).getCategories();
-                        getActivity().runOnUiThread(() -> {
-                            showClassificationResults(categories);
-                            showAlertDialog("Sound Detected", "Classification complete. View the results.");
-                        });
-                        saveRecordingHistory(categories);
+                    if (audioConn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                        InputStream inputStream = audioConn.getInputStream();
+                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                        byte[] temp = new byte[1024];
+                        int read;
+                        while ((read = inputStream.read(temp)) != -1) {
+                            buffer.write(temp, 0, read);
+                        }
+                        inputStream.close();
+                        audioConn.disconnect();
+
+                        byte[] audioData = buffer.toByteArray();
+
+                        // Step 3: Use YAMNet to check if it's a cry
+                        boolean isCry = classifyWithYamnet(audioData);
+                        if (isCry) {
+                            float[] floatData = convertToFloatArray(audioData);
+                            tensor.load(floatData);
+                            List<Classifications> results = cryClassifier.classify(tensor);
+                            List<Category> categories = results.get(0).getCategories();
+
+                            getActivity().runOnUiThread(() -> {
+                                showClassificationResults(categories);
+                                showAlertDialog("Sound Detected", "Classification complete. View the results.");
+                            });
+
+                            saveRecordingHistory(categories);
+                        } else {
+                            getActivity().runOnUiThread(() ->
+                                    showAlertDialog("No Cry Detected", "This does not appear to be a cry.")
+                            );
+                        }
                     } else {
-                        getActivity().runOnUiThread(() -> showAlertDialog("No Cry Detected", "This does not appear to be a cry."));
+                        showAlertDialog("Download Failed", "Unable to fetch cry.wav from Raspberry Pi.");
                     }
+
                 } else {
-                    showAlertDialog("Recording Failed", "Failed to get recording from Raspberry Pi.");
+                    showAlertDialog("Recording Failed", "Failed to trigger recording on Raspberry Pi.");
                 }
 
-                conn.disconnect();
             } catch (Exception e) {
                 Log.e(TAG, "Recording Error: ", e);
                 showAlertDialog("Recording Error", e.getMessage());
@@ -249,6 +271,7 @@ public class MonitorFragment extends Fragment implements View.OnClickListener {
             }
         }).start();
     }
+
 
     private boolean classifyWithYamnet(byte[] audioData) {
         try {

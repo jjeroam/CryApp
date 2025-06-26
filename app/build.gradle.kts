@@ -106,6 +106,8 @@ android {
         implementation("org.tensorflow:tensorflow-lite-task-audio:0.4.4")
         implementation("org.tensorflow:tensorflow-lite-metadata:0.4.4")
 
+//        implementation("com.github.JorenSix:TarsosDSP:2.4")
+
 
         // Charting
         implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")

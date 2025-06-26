@@ -39,7 +39,7 @@ import java.util.concurrent.Executors;
 public class InterpreterFragment extends Fragment {
 
     private static final String TAG = InterpreterFragment.class.getSimpleName();
-    private static final String CRY_CLASSIFICATION_MODEL_PATH = "crymodel44.tflite";
+    private static final String CRY_CLASSIFICATION_MODEL_PATH = "balAugCNN.tflite";
     private static final String YAMNET_MODEL_PATH = "yamnet.tflite";
     private static final int RECORDING_DURATION_MS = 5000;
     private static final float SCORE_THRESHOLD = 0.00f;
@@ -48,7 +48,6 @@ public class InterpreterFragment extends Fragment {
     private AudioClassifier yamnetClassifier;
     private TensorAudio tensor;
     private AudioRecord record;
-    private Handler handler;
 
     private DatabaseHelper dbHelper;
     private Button startButton;
@@ -84,7 +83,7 @@ public class InterpreterFragment extends Fragment {
 
             @Override
             public void onFinish() {
-                countdownView.setVisibility(View.GONE);
+                countdownView.setVisibility(View.VISIBLE);
                 stopRecordingAndClassifyCry();
             }
         }.start();
@@ -159,7 +158,7 @@ public class InterpreterFragment extends Fragment {
 
                     // Re-enable the button and hide countdown
                     startButton.setEnabled(true);
-                    countdownView.setVisibility(View.GONE);
+                    countdownView.setVisibility(View.VISIBLE);
                 });
                 return;
             }
@@ -198,7 +197,7 @@ public class InterpreterFragment extends Fragment {
 
                     Toast.makeText(getContext(), "Result saved", Toast.LENGTH_SHORT).show();
                     startButton.setEnabled(true);
-                    countdownView.setVisibility(View.GONE);
+                    countdownView.setVisibility(View.VISIBLE);
                 });
 
             } catch (Exception e) {
@@ -209,7 +208,7 @@ public class InterpreterFragment extends Fragment {
                     }
                     Toast.makeText(getContext(), "Classification failed", Toast.LENGTH_SHORT).show();
                     startButton.setEnabled(true);
-                    countdownView.setVisibility(View.GONE);
+                    countdownView.setVisibility(View.VISIBLE);
                 });
             }
 
