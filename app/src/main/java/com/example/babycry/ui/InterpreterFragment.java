@@ -36,10 +36,22 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
+import android.net.Uri;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+
 public class InterpreterFragment extends Fragment {
 
     private static final String TAG = InterpreterFragment.class.getSimpleName();
-    private static final String CRY_CLASSIFICATION_MODEL_PATH = "balAugCNN.tflite";
+    private static final String CRY_CLASSIFICATION_MODEL_PATH = "crymodel44.tflite";
     private static final String YAMNET_MODEL_PATH = "yamnet.tflite";
     private static final int RECORDING_DURATION_MS = 5000;
     private static final float SCORE_THRESHOLD = 0.00f;
@@ -65,6 +77,8 @@ public class InterpreterFragment extends Fragment {
         dbHelper = new DatabaseHelper(getContext());
 
         startButton.setOnClickListener(v -> startRecording());
+
+        FirebaseApp.initializeApp(requireContext());
 
         return view;
     }
@@ -174,6 +188,19 @@ public class InterpreterFragment extends Fragment {
                 tensor.load(record);
                 record.stop();
 
+                String fileName = "cry_" + System.currentTimeMillis() + ".wav";
+                File outputFile = new File(requireContext().getFilesDir(), fileName);
+
+                try {
+                    writeTensorAudioToWav(tensor, outputFile);
+                    uploadAudioToFirebase(outputFile);
+                    Log.d(TAG, "Audio buffer size: " + tensor.getTensorBuffer().getFloatArray().length);
+
+                } catch (IOException e) {
+                    Log.e(TAG, "Failed to save audio: " + e.getMessage());
+                }
+
+
                 List<Classifications> output = cryClassifier.classify(tensor);
                 List<Category> finalOutput = new ArrayList<>();
                 for (Classifications classifications : output) {
@@ -213,6 +240,61 @@ public class InterpreterFragment extends Fragment {
             }
 
             executor.shutdown();
+        });
+    }
+    // Converts TensorAudio into a .wav file and writes it
+    private void writeTensorAudioToWav(TensorAudio tensor, File outFile) throws IOException {
+        float[] audioBuffer = tensor.getTensorBuffer().getFloatArray();
+        byte[] wavData = convertFloatToWav(audioBuffer, 16000); // replace with your sample rate if different
+
+        try (FileOutputStream fos = new FileOutputStream(outFile)) {
+            fos.write(wavData);
+        }
+    }
+
+    // Converts a float array to WAV byte format
+    private byte[] convertFloatToWav(float[] audioData, int sampleRate) {
+        int totalLen = audioData.length * 2 + 44;
+        ByteBuffer buffer = ByteBuffer.allocate(totalLen).order(ByteOrder.LITTLE_ENDIAN);
+
+        // Write WAV header
+        buffer.put("RIFF".getBytes());
+        buffer.putInt(totalLen - 8); // ChunkSize
+        buffer.put("WAVE".getBytes());
+        buffer.put("fmt ".getBytes());
+        buffer.putInt(16); // Subchunk1Size (PCM)
+        buffer.putShort((short) 1); // AudioFormat (1 = PCM)
+        buffer.putShort((short) 1); // NumChannels (1 = mono)
+        buffer.putInt(sampleRate);  // SampleRate
+        buffer.putInt(sampleRate * 2); // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
+        buffer.putShort((short) 2); // BlockAlign (NumChannels * BitsPerSample/8)
+        buffer.putShort((short) 16); // BitsPerSample
+        buffer.put("data".getBytes());
+        buffer.putInt(audioData.length * 2); // Subchunk2Size
+
+        // Write PCM audio data
+        for (float sample : audioData) {
+            short pcm = (short) (sample * Short.MAX_VALUE); // convert float [-1,1] to PCM 16-bit
+            buffer.putShort(pcm);
+        }
+
+        return buffer.array();
+    }
+
+
+    private void uploadAudioToFirebase(File file) {
+        Uri fileUri = Uri.fromFile(file);
+        String fileName = "audio/" + file.getName();
+
+        StorageReference storageRef = FirebaseStorage.getInstance().getReference().child(fileName);
+        UploadTask uploadTask = storageRef.putFile(fileUri);
+
+        uploadTask.addOnSuccessListener(taskSnapshot -> {
+            Log.d(TAG, "Audio uploaded successfully");
+            Toast.makeText(getContext(), "Audio uploaded to cloud", Toast.LENGTH_SHORT).show();
+        }).addOnFailureListener(e -> {
+            Log.e(TAG, "Audio upload failed: " + e.getMessage());
+            Toast.makeText(getContext(), "Upload failed", Toast.LENGTH_SHORT).show();
         });
     }
 

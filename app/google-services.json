@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "992258960172",
+    "firebase_url": "https://cryrecording-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "cryrecording",
+    "storage_bucket": "cryrecording.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:992258960172:android:8360f408634262592b9a89",
+        "android_client_info": {
+          "package_name": "com.example.babycry"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2opxzC3QdFXxvBWjqUAFUAycHi87imCE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
